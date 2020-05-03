@@ -1,0 +1,5 @@
+7 4
+BBBBB  
+   B   
+  B    
+BBBBBBB
