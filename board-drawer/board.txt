@@ -1,5 +1,21 @@
-7 4
-BBBBB  
-   B   
-  B    
-BBBBBBB
+50 20
+                                                  
+                                                  
+                                                  
+                                                  
+                                                  
+       BBBBBBBBBB                                 
+                                                  
+                                                  
+                                                  
+                B                                 
+                B                                 
+                B                                 
+                B                                 
+                B                                 
+                B                                 
+                                                  
+                B                                 
+                                   B              
+                                                  
+                                                  

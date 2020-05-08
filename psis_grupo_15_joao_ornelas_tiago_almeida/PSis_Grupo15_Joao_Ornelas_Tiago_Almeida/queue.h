@@ -4,7 +4,8 @@
 
 
 typedef struct fdListStruct{
-    int 				fd;
+	int 				ID;
+    int 				socket_id;
     struct fdListStruct *next;
 }fdList;
 

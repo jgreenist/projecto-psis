@@ -9,7 +9,7 @@
 
 
 /* Creates a new fd list node and puts it in the end of the existing fd list and returns head of the list*/
-fdList *insert_new_fd(fdList *head, int fd){
+fdList *insert_new_fd(fdList *head, int ID,int socket_id){
     fdList * new;
     fdList * aux;
 
@@ -21,7 +21,8 @@ fdList *insert_new_fd(fdList *head, int fd){
         return NULL;
 
     /* initialize new element */
-    new->fd = fd;
+    new->ID = ID;
+    new->socket_id = socket_id;
     new->next = NULL;
 
     /* if list is empty, return new element */

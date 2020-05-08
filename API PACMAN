@@ -1,0 +1,53 @@
+API PACMAN CLIENT
+
+.h para structure of message
+
+1-connect
+2-send moves 
+3-receive moves
+4-disconnet
+
+
+Updates of game
+
+---------------------------------------------------------------------------------------------------
+Server
+
+
+test change
+
+
+
+---------------------------------------------------------------------------------------------------
+
+LAB 9
+SERVER
+
+1-
+argv[1] linhas done
+argv[2] colunas done 
+creates map done
+2-
+threadAccept- wait for connections and creates a new thread for that client done
+
+
+
+3-threadPlayeri
+3.1 read moves done
+3.2 send updates done 
+3.3 end player 
+3.3more than one, ex queue or something similiar
+
+4-Main thread game logic
+
+Client
+1-argv[1] and argv[2] to receive address of a server done
+
+
+2-Socket
+2.1 connect done 
+2.2 send moves done
+2.3 receive updates done
+
+
+
