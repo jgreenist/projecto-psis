@@ -1,21 +1,11 @@
-50 20
-BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
-B                                 B  B           B
-B                                                B
-B                                                B
-B                                                B
-B                                                B
-B        B                                       B
-B                                                B
-B                     B                          B
-B               B                          B     B
-B                                                B
-B                                                B
-B                                                B
-B                                         B      B
-B                                B               B
-B                                                B
-B                                                B
-B                                       B        B
-B                                                B
-BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
+10 10
+B   BB   B
+          
+          
+   B B B  
+B        B
+B  B     B
+          
+          
+         B
+B   BB   B

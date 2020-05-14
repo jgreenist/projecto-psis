@@ -9,24 +9,24 @@
 
 
 /* Creates a new fd list node and puts it in the end of the existing fd list and returns head of the list*/
-IDList *insert_new_ID(IDList *head, int ID, int socket,int rgb_r, int rgb_g,int rgb_b){
-    IDList * new;
+IDList *insert_new_ID(IDList *head, IDList * new){
+    //IDList * new;
     IDList * aux;
 
     /* Memory allocation */
-    new = (IDList *) malloc(sizeof(IDList));
+    //new = (IDList *) malloc(sizeof(IDList));
 
     /* Check memory allocation errors */
-    if(new == NULL)
-        return NULL;
+    //if(new == NULL)
+    //    return NULL;
 
     /* initialize new element */
-    new->ID = ID;
-    new->socket=socket;
-    new->rgb_r = rgb_r;
-    new->rgb_g = rgb_g;
-    new->rgb_b = rgb_b;
-    new->next = NULL;
+    //new->ID = ID;
+    //new->socket=socket;
+    //new->rgb_r = rgb_r;
+    //new->rgb_g = rgb_g;
+    //new->rgb_b = rgb_b;
+    //new->next = NULL;
 
     /* if list is empty, return new element */
     if(head == NULL){
@@ -39,11 +39,28 @@ IDList *insert_new_ID(IDList *head, int ID, int socket,int rgb_r, int rgb_g,int 
         aux = aux->next;
     }
 
-    /* inser new in the end */
+    /* insert new in the end */
     aux->next = new;
 
     return head;
 }
+
+/* Gets the list_ID of a certain ID */
+IDList *get_IDlist(IDList *head,int ID){
+    /* Check if node is not empty */
+    /* if list is empty, return new element */
+    IDList * aux;
+    if(head == NULL){
+        return NULL;
+    }
+    /* point aux to last element */
+    aux = head;
+    while(aux->next != NULL || aux->ID!=ID){
+        aux = aux->next;
+    }
+    return aux;
+}
+
 
 /* Gets the fd of an element of a fd list */
 int get_ID(IDList *elem){
