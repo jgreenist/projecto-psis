@@ -1,6 +1,14 @@
 //
 // Created by Ornelas on 07-05-2020.
 //
+typedef struct Fruits_Struct{
+    sem_t               sem_fruit1;
+    sem_t               sem_fruit2;
+    int 				fruit;
+    int                 x;
+    int 				y;
+    struct Fruits_Struct *next;
+}Fruits_Struct;
 
 
 typedef struct IDListStruct{
@@ -9,6 +17,10 @@ typedef struct IDListStruct{
     int 				rgb_r;
     int                 rgb_g;
     int                 rgb_b;
+    int                 xp,yp;
+    int                 xm,ym;
+    int                 score;
+    int                 superpower;
     struct IDListStruct *next;
 }IDList;
 
@@ -33,5 +45,20 @@ void close_all_fd(IDList *head);
 
 /* Frees the memory allocated to a fd list */
 void free_ID_list(IDList *first);
+
+//-----------------------------------------------------------------------------------------------//
+//---------------------------------Functions for Fruit Lists-------------------------------------//
+//-----------------------------------------------------------------------------------------------//
+
+
+Fruits_Struct * insert_new_Fruit(Fruits_Struct *head, Fruits_Struct * new);
+
+Fruits_Struct * get_fruit_list(Fruits_Struct *head,int fruit);
+
+int get_fruit(Fruits_Struct *elem);
+Fruits_Struct *get_next_fruit(Fruits_Struct *elem);
+Fruits_Struct *remove_fruit_list(Fruits_Struct *head, Fruits_Struct *elem);
+void free_fruit_list(Fruits_Struct *first);
+
 
 

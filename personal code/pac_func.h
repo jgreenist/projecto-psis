@@ -1,54 +1,28 @@
-//
-// Created by Ornelas on 07-05-2020.
-//
+typedef struct threadclient_arg{
+    int sock_fd,ID;
+}threadclient_arg;
 
+typedef struct sem_nplayspersec{
+    sem_t sem_nplay1,sem_nplay2;
+}sem_nplayspersec;
 
+typedef struct sem_inactivity{
+    sem_t sem_inactivity;
+    int ID,rgb_r,rgb_g,rgb_b,character;
+}sem_inactivity;
 
+typedef struct pos_struct{
+    int x;
+    int y;
+} pos_struct;
 
+typedef struct fruit_alloc{
+    sem_t sem_fruit1;
+    sem_t sem_fruit2;
+    int fruit;
+}fruit_alloc;
 
+int set_initialpos(int **board, int n_col,int n_lin);
 
-
-
-
-
-
-
-
-
-
-
-
-/*
-
-typedef struct IDListStruct{
-    int 				ID;
-    int                 socket;
-    int 				rgb_r;
-    int                 rgb_g;
-    int                 rgb_b;
-    struct IDListStruct *next;
-}IDList;
-*/
-
-/* Creates a new fd list node and puts it in the end of the existing fd list and returns head of the list*/
-//IDList *insert_new_ID(IDList *head, IDList * new);
-
-/* Gets the fd of an element of a fd list */
-//int get_ID(IDList *elem);
-
-/* Retrieves next node in the list */
-//IDList *get_next_ID(IDList *elem);
-
-/* Removes node from fd list */
-//IDList *remove_ID(IDList *head, IDList *elem);
-
-/* Gets the list_ID of a certain ID */
-//IDList *get_IDlist(IDList *head,int ID);
-
-/* Closes all sockets */
-//void close_all_fd(IDList *head);
-
-/* Frees the memory allocated to a fd list */
-//void free_ID_list(IDList *first);
-
+pos_struct  get_boardpos(int **board, int char_ID, int n_col,int n_lin);
 

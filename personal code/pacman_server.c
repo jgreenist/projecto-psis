@@ -6,122 +6,1048 @@
 #include <limits.h>
 #include <unistd.h>
 #include <semaphore.h>
+#include <time.h>
 
 //gcc teste.c UI_library.c -o teste-UI -lSDL2 -lSDL2_image
 
 #include "com_protocol.h"
 #include "UI_library.h"
 #include "list_ID.h"
-//#include "board_func.h"
+#include "pac_func.h"
 
 //----------------------------------------------------------//
 //Thread responsible for receiving messages from each player//
 //----------------and deal with initial protocol------------//
 IDList *Clients;
+Fruits_Struct *Fruits;
 int ** board;
-
 int n_cols;
 int n_lines;
-
-typedef struct threadclient_arg{
-    int sock_fd,ID;
-}threadclient_arg;
-
-typedef struct sem_nplayspersec{
-    sem_t sem_nplay1,sem_nplay2;
-}sem_nplayspersec;
-
-typedef struct pos_struct{
-    int x;
-    int y;
-} pos_struct;
-
-pos_struct get_boardpos(int **board, int char_ID, int n_col,int n_lin){
-    int i;
-    int j;
-    pos_struct pos;
-    for(i=0;i<n_lin;i++){
-        for (j = 0; j <n_col ; j++){
-            if(board[i][j]==char_ID){
-                pos.x=j;
-                pos.y=i;
-                break;
-            }
-        }
-    }
-    return pos;
-}
-
-int set_initialpos(int **board, int n_col,int n_lin){
-    int i;
-    int j;
-    int emptyspaces=0;
-    int random_entry;
-    for(i=0;i<n_lin;i++){
-        for (j = 0; j <n_col ; j++){
-            if(board[i][j]==0){
-                emptyspaces++;
-            }
-        }
-    }
-    if(emptyspaces<2){
-        return -1;
-    }
-    random_entry = (rand()%(emptyspaces-1));
-    printf("random entry: %d\n",random_entry);
-    printf("number of empty spaces: %d\n",emptyspaces);
-    emptyspaces=0;
-    for(i=0;i<n_lin;i++){
-        for (j = 0; j <n_col ; j++){
-            if(board[i][j]==0){
-                if(random_entry==emptyspaces){
-                    return i*n_col+j;
-                }
-                emptyspaces++;
-            }
-        }
-    }
-    return -1;
-}
-
 
 Uint32 Event_ShowCharacter;
 Uint32 Event_Change2Characters;
 Uint32 Event_ShownewCharacter;
+Uint32 Event_Inactivity;
+Uint32 Event_Disconnect;
+Uint32 Event_ShowFruit;
+Uint32 Event_ShownewFruits;
+Uint32 Event_Clean2Fruits;
 
+//----------------------------------------------------------//
+//Thread responsible for receiving messages from each player//
+//----------------and deal with initial protocol------------//
 typedef struct Event_ShowCharacter_Data{
     int character,x,y,x_old,y_old,r,g,b;
 } Event_ShowCharacter_Data;
 
 typedef struct Event_Change2Characters_Data{
-    int character1,x1,y1,character2,x2,y2,r1,g1,b1,r2,g2,b2;
+    int character1,x1_old,y1_old,x1,y1,character2,x2,y2,r1,g1,b1,r2,g2,b2;
 } Event_Change2Characters_Data;
 
 typedef struct Event_ShownewCharacter_Data{
     int xp,yp,xm,ym,r,g,b,sock_fd;
 } Event_ShownewCharacter_Data;
 
-typedef struct Event_ShowObject_Data{
-    int object,x,y,sock_id;
-} Event_ShowObject_Data;
+typedef struct Event_Inactivity_Data{
+    int character,x,y,x_old,y_old,r,g,b;
+} Event_Inactivity_Data;
 
+typedef struct Event_Disconnect_Data{
+    int xp,yp,xm,ym;
+} Event_Disconnect_Data;
+
+typedef struct Event_ShowFruit_Data{
+    int fruit,x,y;
+} Event_ShowFruit_Data;
+
+typedef struct Event_ShownewFruits_Data{
+    int x1,y1,x2,y2;
+} Event_ShownewFruits_Data;
+
+typedef struct Event_Clean2Fruits_Data{
+    int x1,y1,x2,y2;
+} Event_Clean2Fruits_Data;
+
+
+//----------------------------------------------------------//
+//Thread responsible for keeping the number of plays per sec//
+//----------------------------------------------------------//
 
 void * thr_forplayspersec(void * arg) {
-
-    //struct sem_nplayspersec *my_arg = (struct sem_nplayspersec*)arg;
-    //while(1){
-      //  sem_wait(my_arg->sem_nplay1);
-       // usleep(500000);
-       // sem_post(my_arg->sem_nplay2);
-    //}
-    while (1);
+    struct sem_nplayspersec * sem_struct_arg= (struct sem_nplayspersec *) arg;
+    while(1){
+        sem_wait(&sem_struct_arg->sem_nplay1);
+        usleep(500000);
+        sem_post(&sem_struct_arg->sem_nplay2);
+    }
 }
 
+//----------------------------------------------------------//
+//---Thread responsible for checking the inactivity of -----//
+//---------------a certain character------------------------//
+//----------------------------------------------------------//
+
+void * thr_inactivity(void * arg) {
+    struct  sem_inactivity * inactivity_arg = (struct sem_inactivity *) arg;
+    int sem_value,error;
+    int msec = 0, trigger = 300000; /* 30000ms=30s */
+    int elem,x,y,x_old,y_old;
+    IDList * client_list;
+    pos_struct old_pos;
+    clock_t difference;
+
+
+    SDL_Event new_event;
+    Event_Inactivity_Data *event_data;
+    event_data = malloc(sizeof(Event_Inactivity_Data));
+    clock_t before = clock();
+    while(1) {
+        error =sem_getvalue(&inactivity_arg->sem_inactivity, &sem_value);
+        if (sem_value == 0 && error==0) {
+
+            difference = clock() - before;
+            msec = difference * 1000 / CLOCKS_PER_SEC;
+
+            if (msec > trigger) {
+                //set new random place
+                client_list=get_IDlist(Clients, inactivity_arg->ID);
+                if(get_IDlist(Clients, inactivity_arg->ID)!=NULL) {
+                    if (inactivity_arg->character == 1) {
+                        client_list=get_IDlist(Clients, inactivity_arg->ID);
+                        x_old = client_list->xp;
+                        y_old = client_list->yp;
+                        board[y_old][x_old]=0;
+                    } else if (inactivity_arg->character == 3) {
+                        client_list=get_IDlist(Clients, inactivity_arg->ID);
+                        x_old = client_list->xm;
+                        y_old = client_list->ym;
+                        board[y_old][x_old]=0;
+                    }
+                }else{
+                    pthread_exit(NULL);
+                }
+                elem = set_initialpos(board, n_cols, n_lines);
+                x = elem % n_cols;
+                y = elem / n_cols;
+
+                //change x_ID and y_ID
+                if(inactivity_arg->character==1){
+                    client_list->xp=x;
+                    client_list->yp=y;
+                }if(inactivity_arg->character==3){
+                    client_list->xm=x;
+                    client_list->ym=y;
+                }
+
+                event_data->character=inactivity_arg->character;
+                event_data->x_old = x_old;
+                event_data->y_old = y_old;
+                event_data->x = x;
+                event_data->y= y;
+                event_data->r = inactivity_arg->rgb_r;
+                event_data->g = inactivity_arg->rgb_g;
+                event_data->b = inactivity_arg->rgb_b;
+
+                SDL_zero(new_event);
+                new_event.type = Event_Inactivity;
+                new_event.user.data1 = event_data;
+                SDL_PushEvent(&new_event);
+
+                printf("new position x:%d y:%d \n", x, y);
+                printf("old position x:%d y:%d \n", old_pos.x, old_pos.y);
+                //reset clock
+                before = clock();
+            }
+            usleep(250000);
+
+        }else if(error==-1){
+            pthread_exit(NULL);
+
+        }else if(sem_value==1){
+            sem_wait(&inactivity_arg->sem_inactivity);
+            //reset clock
+            before = clock();
+        }else{
+            pthread_exit(NULL);
+        }
+    }
+
+    //printf("Time taken %d seconds %d milliseconds (%d iterations)\n",msec/1000, msec%1000, iterations);
+
+}
+
+//----------------------------------------------------------//
+//----Thread responsible for placing ta cherry or a lemon---//
+//----------------after two second-----------*--------------//
+
+void * thr_placefruit(void * arg) {
+    struct Fruits_Struct * my_arg = (struct Fruits_Struct *)arg;
+
+    SDL_Event new_event;
+    Event_ShowFruit_Data *event_data;
+    event_data = malloc(sizeof(Event_ShowFruit_Data));
+    int fruit=my_arg->fruit;
+    int elem;
+    while(1){
+        sem_wait(&my_arg->sem_fruit1);
+        sem_post(&my_arg->sem_fruit2);
+        sleep(2);
+        elem=set_initialpos(board, n_cols,n_lines);
+        event_data->x =elem%n_cols;
+        event_data->y =elem/n_cols;
+        event_data->fruit = fruit;
+
+        my_arg->x=elem%n_cols;
+        my_arg->y=elem/n_cols;
+
+        //need Sync
+        board[elem/n_cols][elem%n_cols]=my_arg->fruit;
+
+        SDL_zero(new_event);
+        new_event.type = Event_ShowFruit;
+        new_event.user.data1 = event_data;
+        SDL_PushEvent(&new_event);
+        sem_wait(&my_arg->sem_fruit2);
+
+
+
+    }
+}
+//----------------------------------------------------------//
+//---------------CHECK IF A MOVE IS VALID FUNCTION----------//
+//----------------------------------------------------------//
+
+typedef struct valid_move{
+    int valid; //0 or 1
+    int flag2player; //0 1 (second character of other player) 2 (second character of the same player)
+    int flag_newfruit; //0 or 1
+    int character1,character2,new_x1,new_y1,new_x2,new_y2;
+    int other_rgb_r,other_rgb_g,other_rgb_b;
+
+}valid_move;
+
+valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old, int character, int ID, int superpower) {
+    int elem;
+    valid_move validity_move;
+    validity_move.valid = 0;
+    validity_move.flag2player = 0;
+    validity_move.flag_newfruit = 0;
+    validity_move.character2 = 0;
+    validity_move.new_x1 = 0;
+    validity_move.new_y1 = 0;
+    validity_move.new_x2 = 0;
+    validity_move.new_y2 = 0;
+    validity_move.other_rgb_r = 0;
+    validity_move.other_rgb_b = 0;
+    validity_move.other_rgb_b = 0;
+
+
+
+    int ID_other;
+    IDList *other_list;
+
+
+    if (((x_new - 1 == x_old || x_new + 1 == x_old) && y_new == y_old) ||((y_new - 1 == y_old || y_new + 1 == y_old) && x_new == x_old)) {
+
+        if (character == 1) {
+            //valid
+            validity_move.character1=1;
+
+            if (x_new > (n_cols - 1)) {
+                if (board[y_new][n_cols - 2] == 0) {
+                    validity_move.new_x1 = n_cols - 2;
+                    validity_move.new_y1 = y_new;
+
+                    board[y_new][n_cols - 2] = 10 + ID;
+                    board[y_old][x_old]=0;
+                    validity_move.valid = 1;
+                } else {
+                    validity_move.new_x1 = x_old;
+                    validity_move.new_y1 = y_new;
+
+                    board[validity_move.new_y1][validity_move.new_x1]=(ID+10);
+                    board[y_old][x_old]=0;
+                    validity_move.valid = 1;
+                }
+            }else if (x_new < 0) {
+                if (board[y_new][1] == 0) {
+                    validity_move.new_x1 = 1;
+                    validity_move.new_y1 = y_new;
+
+                    board[y_new][1] = 10 + ID;
+                    board[y_old][x_old] = 0;
+                    validity_move.valid = 1;
+
+                } else {
+                    validity_move.new_x1 = x_old;
+                    validity_move.new_y1 = y_new;
+
+                    board[validity_move.new_y1][validity_move.new_x1] = (ID + 10);
+                    board[y_old][x_old] = 0;
+                    validity_move.valid = 1;
+
+                }
+            }
+            else if (y_new > (n_lines - 1)){
+                if (board[n_lines - 2][x_new] == 0) {
+                    board[n_lines - 2][x_new] = 10 + ID;
+                    validity_move.new_y1 = n_lines - 2;
+                    validity_move.new_x1 = x_new;
+
+                    board[y_old][x_old]=0;
+                    validity_move.valid = 1;
+
+                } else {
+                    validity_move.new_y1 = y_old;
+                    validity_move.new_x1 = x_new;
+
+                    board[validity_move.new_y1][validity_move.new_x1]=(ID+10);
+                    board[y_old][x_old]=0;
+                    validity_move.valid = 1;
+
+                }
+            }else if (y_new < 0) {
+
+                if (board[1][x_new] == 0) {
+                    board[1][x_new] = 10 + ID;
+                    validity_move.new_y1 = 1;
+                    validity_move.new_x1 = x_new;
+
+                    board[y_old][x_old]=0;
+                    validity_move.valid = 1;
+
+                } else {
+                    validity_move.new_y1 = y_old;
+                    validity_move.new_x1 = x_new;
+
+                    board[validity_move.new_y1][validity_move.new_x1]=(ID+10);
+                    board[y_old][x_old]=0;
+                    validity_move.valid = 1;
+                }
+            }else if (board[y_new][x_new] == 4){
+                board[y_new][x_new] = 10 + ID+1;
+                validity_move.new_x1 = x_new;
+                validity_move.new_y1 = y_new;
+                board[y_old][x_old]=0;
+
+                validity_move.flag_newfruit = 1;
+                validity_move.valid = 1;
+            }else if (board[y_new][x_new] == 5){
+                board[y_new][x_new] = 10 + ID+1;
+                validity_move.new_x1 = x_new;
+                validity_move.new_y1 = y_new;
+                board[y_old][x_old]=0;
+
+                validity_move.flag_newfruit = 2;
+                validity_move.valid = 1;
+            }else if (board[y_new][x_new] > 10) {
+                //printf("board[y_new][x_new]:%d\n",board[y_new][x_new]);
+                ID_other = board[y_new][x_new] - 10;
+                board[y_old][x_old] = board[y_new][x_new];
+                board[y_new][x_new] = 10 + ID;
+
+                validity_move.flag2player = 1;
+                validity_move.new_x2 = x_old;
+                validity_move.new_y2 = y_old;
+                if (ID_other % 2 == 0) {
+                    validity_move.character2 = 2;
+
+                    other_list = get_IDlist(Clients, ID_other - 1);
+                    other_list->xp=x_old;
+                    other_list->yp=y_old;
+
+                } else {
+                    validity_move.character2 = 1;
+
+                    other_list = get_IDlist(Clients, ID_other);
+                    other_list->xp=x_old;
+                    other_list->yp=y_old;
+                }
+                validity_move.other_rgb_r = other_list->rgb_r;
+                validity_move.other_rgb_g = other_list->rgb_g;
+                validity_move.other_rgb_b = other_list->rgb_b;
+                validity_move.new_x1 = x_new;
+                validity_move.new_y1 = y_new;
+                validity_move.valid = 1;
+            }else if (board[y_new][x_new] == -(ID + 10)) {
+                board[y_old][x_old] = board[y_new][x_new];
+                board[y_new][x_new] = ID + 10;
+
+                validity_move.flag2player = 2;
+                validity_move.character2 = 3;
+                validity_move.new_x2 = x_old;
+                validity_move.new_y2 = y_old;
+                validity_move.new_x1 = x_new;
+                validity_move.new_y1 = y_new;
+                validity_move.valid = 1;
+
+
+            }else if (board[y_new][x_new] <-10) {
+                board[y_old][x_old] = 0;
+                validity_move.character2=3;
+                validity_move.new_x2=x_new;
+                validity_move.new_y2=y_new;
+                elem=set_initialpos(board, n_cols,n_lines);
+                x_new =elem%n_cols;
+                y_new =elem/n_cols;
+
+                board[y_new][x_new] = ID + 10;
+
+                validity_move.flag2player = 0;
+                validity_move.new_x1 = x_new;
+                validity_move.new_y1 = y_new;
+                validity_move.valid = 1;
+
+
+            }else if (x_new != x_old) {
+                if (x_new > x_old && board[y_new][x_new] != 0) {
+                    if (board[y_new][x_new] == 1) {
+                        if (board[y_new][x_new - 2] != 1 && x_new - 2 >= 0) {
+                            validity_move.new_x1 = x_new - 2;
+                            validity_move.new_y1 = y_new;
+
+                            board[validity_move.new_y1][validity_move.new_x1]=(ID+10);
+                            board[y_old][x_old]=0;
+                            validity_move.valid = 1;
+                        } else {
+                            validity_move.new_x1 = x_old;
+                            validity_move.new_y1 = y_new;
+
+                            board[validity_move.new_y1][validity_move.new_x1]=(ID+10);
+                            board[y_old][x_old]=0;
+                            validity_move.valid = 1;
+                        }
+                    }
+                } else if (x_new < x_old && board[y_new][x_new] != 0) {
+                    if (board[y_new][x_new] == 1) {
+                        if (board[y_new][x_new + 2] != 1 && x_new + 2 <= n_cols - 1) {
+                            validity_move.new_x1 = x_new + 2;
+                            validity_move.new_y1 = y_new;
+
+                            board[validity_move.new_y1][validity_move.new_x1]=(ID+10);
+                            board[y_old][x_old]=0;
+                            validity_move.valid = 1;
+
+                        } else {
+                            validity_move.new_x1 = x_old;
+                            validity_move.new_y1 = y_new;
+
+                            board[validity_move.new_y1][validity_move.new_x1]=(ID+10);
+                            board[y_old][x_old]=0;
+                            validity_move.valid = 1;
+                        }
+                    }
+                }else{
+                    validity_move.new_y1 = y_new;
+                    validity_move.new_x1 = x_new;
+                    board[y_old][x_old]=0;
+                    board[y_new][x_new]=(ID+10);
+                    validity_move.valid=1;
+                }
+            }else if (y_new != y_old) {
+                if (y_new > y_old && board[y_new][x_new] != 0) {
+                    if (board[y_new][x_new] == 1) {
+                        if (board[y_new - 2][x_new] != 1 && y_new - 2 >= 0) {
+                            validity_move.new_y1 = y_new - 2;
+                            validity_move.new_x1 = x_new;
+
+                            board[validity_move.new_y1][validity_move.new_x1]=(ID+10);
+                            board[y_old][x_old]=0;
+                            validity_move.valid = 1;
+                        } else {
+                            validity_move.new_y1 = y_old;
+                            validity_move.new_x1 = x_new;
+
+                            board[validity_move.new_y1][validity_move.new_x1]=(ID+10);
+                            board[y_old][x_old]=0;
+                            validity_move.valid = 1;
+                        }
+                    }
+                }
+                else if (y_new < y_old && board[y_new][x_new] != 0) {
+                    if (board[y_new][x_new] == 1) {
+                        if (board[y_new + 2][x_new] != 1 && y_new + 2 <= n_lines - 1) {
+                            validity_move.new_y1 = y_new + 2;
+                            validity_move.new_x1 = x_new;
+
+                            board[validity_move.new_y1][validity_move.new_x1]=(ID+10);
+                            board[y_old][x_old]=0;
+                            validity_move.valid = 1;
+                        } else {
+                            validity_move.new_y1 = y_old;
+                            validity_move.new_x1 = x_new;
+
+                            board[validity_move.new_y1][validity_move.new_x1]=(ID+10);
+                            board[y_old][x_old]=0;
+                            validity_move.valid = 1;
+
+                        }
+                    }
+                }else{
+                    validity_move.new_y1 = y_new;
+                    validity_move.new_x1 = x_new;
+                    board[y_new][x_new]=(ID+10);
+                    board[y_old][x_old]=0;
+                    validity_move.valid=1;
+                }
+            }
+            return validity_move;
+
+
+        }
+            //-------------------------------------------------------------------------------//
+
+            //-------------------------------------------------------------------------------//
+
+            //-------------------------------------------------------------------------------//
+
+        else if (character == 2){
+            //valid
+            validity_move.character1=2;
+
+            if (x_new > (n_cols - 1)) {
+                if (board[y_new][n_cols - 2] == 0) {
+                    validity_move.new_x1 = n_cols - 2;
+                    validity_move.new_y1 = y_new;
+
+                    board[y_new][n_cols - 2] = 10 + ID+1;
+                    board[y_old][x_old]=0;
+                    validity_move.valid = 1;
+                } else {
+                    validity_move.new_x1 = x_old;
+                    validity_move.new_y1 = y_new;
+
+                    board[validity_move.new_y1][validity_move.new_x1]=(ID+10)+1;
+                    board[y_old][x_old]=0;
+                    validity_move.valid = 1;
+                }
+            }else if (x_new < 0) {
+                if (board[y_new][1] == 0) {
+                    validity_move.new_x1 = 1;
+                    validity_move.new_y1 = y_new;
+
+                    board[y_new][1] = 10 + ID+1;
+                    board[y_old][x_old] = 0;
+                    validity_move.valid = 1;
+
+                } else {
+                    validity_move.new_x1 = x_old;
+                    validity_move.new_y1 = y_new;
+
+                    board[validity_move.new_y1][validity_move.new_x1] = (ID + 10)+1;
+                    board[y_old][x_old] = 0;
+                    validity_move.valid = 1;
+
+                }
+            }
+            else if (y_new > (n_lines - 1)){
+                if (board[n_lines - 2][x_new] == 0) {
+                    board[n_lines - 2][x_new] = 10 + ID+1;
+                    validity_move.new_y1 = n_lines - 2;
+                    validity_move.new_x1 = x_new;
+
+                    board[y_old][x_old]=0;
+                    validity_move.valid = 1;
+
+                } else {
+                    validity_move.new_y1 = y_old;
+                    validity_move.new_x1 = x_new;
+
+                    board[validity_move.new_y1][validity_move.new_x1]=(ID+10)+1;
+                    board[y_old][x_old]=0;
+                    validity_move.valid = 1;
+
+                }
+            }else if (y_new < 0) {
+
+                if (board[1][x_new] == 0) {
+                    board[1][x_new] = 10 + ID+1;
+                    validity_move.new_y1 = 1;
+                    validity_move.new_x1 = x_new;
+
+                    board[y_old][x_old]=0;
+                    validity_move.valid = 1;
+
+                } else {
+                    validity_move.new_y1 = y_old;
+                    validity_move.new_x1 = x_new;
+
+                    board[validity_move.new_y1][validity_move.new_x1]=(ID+10)+1;
+                    board[y_old][x_old]=0;
+                    validity_move.valid = 1;
+                }
+            }else if (board[y_new][x_new] == 4){
+                if(superpower==2){
+                    board[y_new][x_new] = 10 + ID;
+                }else{
+                    board[y_new][x_new] = 10 + ID+1;
+                }
+                validity_move.new_x1 = x_new;
+                validity_move.new_y1 = y_new;
+                board[y_old][x_old]=0;
+
+                validity_move.flag_newfruit = 1;
+                validity_move.valid = 1;
+            }else if (board[y_new][x_new] == 5){
+                if(superpower==2){
+                    board[y_new][x_new] = 10 + ID;
+                }else{
+                    board[y_new][x_new] = 10 + ID+1;
+                }
+                validity_move.new_x1 = x_new;
+                validity_move.new_y1 = y_new;
+                board[y_old][x_old]=0;
+
+                validity_move.flag_newfruit = 2;
+                validity_move.valid = 1;
+            }else if (board[y_new][x_new] > 10) {
+                //printf("board[y_new][x_new]:%d\n",board[y_new][x_new]);
+                ID_other = board[y_new][x_new] - 10;
+                board[y_old][x_old] = board[y_new][x_new];
+                board[y_new][x_new] = 10 + ID+1;
+
+                validity_move.flag2player = 1;
+                validity_move.new_x2 = x_old;
+                validity_move.new_y2 = y_old;
+                if (ID_other % 2 == 0) {
+                    validity_move.character2 = 2;
+
+                    other_list = get_IDlist(Clients, ID_other - 1);
+                    other_list->xp=x_old;
+                    other_list->yp=y_old;
+
+                } else {
+                    validity_move.character2 = 1;
+
+                    other_list = get_IDlist(Clients, ID_other);
+                    other_list->xp=x_old;
+                    other_list->yp=y_old;
+                }
+                validity_move.other_rgb_r = other_list->rgb_r;
+                validity_move.other_rgb_g = other_list->rgb_g;
+                validity_move.other_rgb_b = other_list->rgb_b;
+                validity_move.new_x1 = x_new;
+                validity_move.new_y1 = y_new;
+                validity_move.valid = 1;
+            }else if (board[y_new][x_new] == -(ID + 10)) {
+                board[y_old][x_old] = board[y_new][x_new];
+                board[y_new][x_new] = ID + 10+1;
+
+                validity_move.flag2player = 2;
+                validity_move.character2 = 3;
+                validity_move.new_x2 = x_old;
+                validity_move.new_y2 = y_old;
+                validity_move.new_x1 = x_new;
+                validity_move.new_y1 = y_new;
+                validity_move.valid = 1;
+
+
+            }else if (board[y_new][x_new] < -10) {
+
+                //monster and eats it
+                ID_other = (-board[y_new][x_new])-10 ;
+                board[y_old][x_old] = 0;
+                board[y_new][x_new] = 10 + ID+1;
+                validity_move.flag2player = 3;
+                validity_move.character2 = 3;
+
+                elem = set_initialpos(board, n_cols, n_lines);
+
+                board[elem / n_cols][elem % n_cols] = -(10 + ID_other);
+                validity_move.new_x2 = elem % n_cols;
+                validity_move.new_y2 = elem / n_cols;
+                other_list = get_IDlist(Clients, ID_other);
+                other_list->xm = elem % n_cols;
+                other_list->ym = elem / n_cols;
+
+                validity_move.other_rgb_r = other_list->rgb_r;
+                validity_move.other_rgb_g = other_list->rgb_g;
+                validity_move.other_rgb_b = other_list->rgb_b;
+                validity_move.new_x1 = x_new;
+                validity_move.new_y1 = y_new;
+                validity_move.valid = 1;
+
+
+            }else if (x_new != x_old) {
+                if (x_new > x_old && board[y_new][x_new] != 0) {
+                    if (board[y_new][x_new] == 1) {
+                        if (board[y_new][x_new - 2] != 1 && x_new - 2 >= 0) {
+                            validity_move.new_x1 = x_new - 2;
+                            validity_move.new_y1 = y_new;
+
+                            board[validity_move.new_y1][validity_move.new_x1]=(ID+10)+1;
+                            board[y_old][x_old]=0;
+                            validity_move.valid = 1;
+                        } else {
+                            validity_move.new_x1 = x_old;
+                            validity_move.new_y1 = y_new;
+
+                            board[validity_move.new_y1][validity_move.new_x1]=(ID+10)+1;
+                            board[y_old][x_old]=0;
+                            validity_move.valid = 1;
+                        }
+                    }
+                } else if (x_new < x_old && board[y_new][x_new] != 0) {
+                    if (board[y_new][x_new] == 1) {
+                        if (board[y_new][x_new + 2] != 1 && x_new + 2 <= n_cols - 1) {
+                            validity_move.new_x1 = x_new + 2;
+                            validity_move.new_y1 = y_new;
+
+                            board[validity_move.new_y1][validity_move.new_x1]=(ID+10)+1;
+                            board[y_old][x_old]=0;
+                            validity_move.valid = 1;
+
+                        } else {
+                            validity_move.new_x1 = x_old;
+                            validity_move.new_y1 = y_new;
+
+                            board[validity_move.new_y1][validity_move.new_x1]=(ID+10)+1;
+                            board[y_old][x_old]=0;
+                            validity_move.valid = 1;
+                        }
+                    }
+                }else{
+                    validity_move.new_y1 = y_new;
+                    validity_move.new_x1 = x_new;
+                    board[y_old][x_old]=0;
+                    board[y_new][x_new]=(ID+10)+1;
+                    validity_move.valid=1;
+                }
+            }else if (y_new != y_old) {
+                if (y_new > y_old && board[y_new][x_new] != 0) {
+                    if (board[y_new][x_new] == 1) {
+                        if (board[y_new - 2][x_new] != 1 && y_new - 2 >= 0) {
+                            validity_move.new_y1 = y_new - 2;
+                            validity_move.new_x1 = x_new;
+
+                            board[validity_move.new_y1][validity_move.new_x1]=(ID+10)+1;
+                            board[y_old][x_old]=0;
+                            validity_move.valid = 1;
+                        } else {
+                            validity_move.new_y1 = y_old;
+                            validity_move.new_x1 = x_new;
+
+                            board[validity_move.new_y1][validity_move.new_x1]=(ID+10)+1;
+                            board[y_old][x_old]=0;
+                            validity_move.valid = 1;
+                        }
+                    }
+                }
+                else if (y_new < y_old && board[y_new][x_new] != 0) {
+                    if (board[y_new][x_new] == 1) {
+                        if (board[y_new + 2][x_new] != 1 && y_new + 2 <= n_lines - 1) {
+                            validity_move.new_y1 = y_new + 2;
+                            validity_move.new_x1 = x_new;
+
+                            board[validity_move.new_y1][validity_move.new_x1]=(ID+10)+1;
+                            board[y_old][x_old]=0;
+                            validity_move.valid = 1;
+                        } else {
+                            validity_move.new_y1 = y_old;
+                            validity_move.new_x1 = x_new;
+
+                            board[validity_move.new_y1][validity_move.new_x1]=(ID+10)+1;
+                            board[y_old][x_old]=0;
+                            validity_move.valid = 1;
+
+                        }
+                    }
+                }else{
+                    validity_move.new_y1 = y_new;
+                    validity_move.new_x1 = x_new;
+                    board[y_new][x_new]=(ID+10)+1;
+                    board[y_old][x_old]=0;
+                    validity_move.valid=1;
+                }
+            }
+            return validity_move;
+        }
+            //-------------------------------------------------------------------------------//
+
+            //-------------------------------------------------------------------------------//
+
+            //-------------------------------------------------------------------------------//
+
+        else if (character == 3) {
+            validity_move.character1 = 3;
+
+            if (x_new > (n_cols - 1)) {
+                if (board[y_new][n_cols - 2] == 0) {
+                    validity_move.new_x1 = n_cols - 2;
+                    validity_move.new_y1 = y_new;
+
+                    board[y_new][n_cols - 2] = -(10 + ID);
+                    board[y_old][x_old] = 0;
+                    validity_move.valid = 1;
+                } else {
+                    validity_move.new_x1 = x_old;
+                    validity_move.new_y1 = y_new;
+
+                    board[validity_move.new_y1][validity_move.new_x1] = -(ID + 10);
+                    board[y_old][x_old] = 0;
+                    validity_move.valid = 1;
+                }
+            } else if (x_new < 0) {
+                if (board[y_new][1] == 0) {
+                    validity_move.new_x1 = 1;
+                    validity_move.new_y1 = y_new;
+
+                    board[y_new][1] = -(10 + ID);
+                    board[y_old][x_old] = 0;
+                    validity_move.valid = 1;
+
+                } else {
+                    validity_move.new_x1 = x_old;
+                    validity_move.new_y1 = y_new;
+
+                    board[validity_move.new_y1][validity_move.new_x1] = -(ID + 10);
+                    board[y_old][x_old] = 0;
+                    validity_move.valid = 1;
+
+                }
+            } else if (y_new > (n_lines - 1)) {
+                if (board[n_lines - 2][x_new] == 0) {
+                    validity_move.new_y1 = n_lines - 2;
+                    validity_move.new_x1 = x_new;
+
+                    board[validity_move.new_y1][validity_move.new_x1] = -(ID + 10);
+                    board[y_old][x_old] = 0;
+                    validity_move.valid = 1;
+
+                } else {
+                    validity_move.new_y1 = y_old;
+                    validity_move.new_x1 = x_new;
+
+                    board[validity_move.new_y1][validity_move.new_x1] = -(ID + 10);
+                    board[y_old][x_old] = 0;
+                    validity_move.valid = 1;
+
+                }
+            } else if (y_new < 0) {
+
+                if (board[1][x_new] == 0) {
+                    validity_move.new_y1 = 1;
+                    validity_move.new_x1 = x_new;
+
+                    board[validity_move.new_y1][validity_move.new_x1] = -(ID + 10);
+                    board[y_old][x_old] = 0;
+                    validity_move.valid = 1;
+
+                } else {
+                    validity_move.new_y1 = y_old;
+                    validity_move.new_x1 = x_new;
+
+                    board[validity_move.new_y1][validity_move.new_x1] = -(ID + 10);
+                    board[y_old][x_old] = 0;
+                    validity_move.valid = 1;
+                }
+            }else if (board[y_new][x_new] == 4){
+                board[y_new][x_new] = -(10 + ID);
+                validity_move.new_x1 = x_new;
+                validity_move.new_y1 = y_new;
+                board[y_old][x_old]=0;
+
+                validity_move.flag_newfruit = 1;
+                validity_move.valid = 1;
+
+            }else if (board[y_new][x_new] == 5){
+                board[y_new][x_new] = -(10 + ID);
+                validity_move.new_x1 = x_new;
+                validity_move.new_y1 = y_new;
+                board[y_old][x_old]=0;
+
+                validity_move.flag_newfruit = 2;
+                validity_move.valid = 1;
+            } else if (board[y_new][x_new] < -10) {
+                ID_other = (-10) - (board[y_new][x_new]);
+                board[y_old][x_old] = board[y_new][x_new];
+                board[y_new][x_new] = -(10 + ID);
+                validity_move.flag2player = 1;
+                validity_move.character2 = 3;
+                validity_move.new_x2 = x_old;
+                validity_move.new_y2 = y_old;
+
+                other_list = get_IDlist(Clients, ID_other);
+                other_list->xm=x_old;
+                other_list->ym=y_old;
+
+                validity_move.other_rgb_r = other_list->rgb_r;
+                validity_move.other_rgb_g = other_list->rgb_g;
+                validity_move.other_rgb_b = other_list->rgb_b;
+                validity_move.new_x1 = x_new;
+                validity_move.new_y1 = y_new;
+                validity_move.valid = 1;
+                //monster of another player
+            } else if (board[y_new][x_new] == (ID + 10)) {
+                //the pacman of the same player
+
+                board[y_old][x_old] = board[y_new][x_new];
+                board[y_new][x_new] = -(ID + 10);
+                validity_move.flag2player = 2;
+                validity_move.character2 = 1;
+                validity_move.new_x2 = x_old;
+                validity_move.new_y2 = y_old;
+                validity_move.new_x1 = x_new;
+                validity_move.new_y1 = y_new;
+                validity_move.valid = 1;
+            }else if (board[y_new][x_new] >10) {
+                if(board[y_new][x_new]%2==0){
+                    ID_other = board[y_new][x_new]-10-1;
+                    other_list = get_IDlist(Clients, ID_other);
+                    validity_move.other_rgb_r = other_list->rgb_r;
+                    validity_move.other_rgb_g = other_list->rgb_g;
+                    validity_move.other_rgb_b = other_list->rgb_b;
+                    validity_move.new_x2=other_list->xp;
+                    validity_move.new_y2=other_list->yp;
+
+                    //superpowerpacman
+                    //gets eaten
+                    board[y_old][x_old] = 0;
+                    elem=set_initialpos(board, n_cols,n_lines);
+                    x_new =elem%n_cols;
+                    y_new =elem/n_cols;
+
+
+                    board[y_new][x_new] = -(ID + 10);
+                    validity_move.flag2player = 4;
+                    validity_move.new_x1 = x_new;
+                    validity_move.new_y1 = y_new;
+                    validity_move.valid = 1;
+
+                }else {
+                    //pacman
+                    // eats it
+                    ID_other = board[y_new][x_new] - 10;
+                    board[y_old][x_old] = 0;
+                    board[y_new][x_new] = -(10 + ID);
+                    validity_move.flag2player = 1;
+                    validity_move.character2 = 1;
+
+                    elem = set_initialpos(board, n_cols, n_lines);
+
+                    board[elem / n_cols][elem % n_cols] = (10 + ID_other);
+                    validity_move.new_x2 = elem % n_cols;
+                    validity_move.new_y2 = elem / n_cols;
+                    other_list = get_IDlist(Clients, ID_other);
+                    other_list->xp = elem % n_cols;
+                    other_list->yp = elem / n_cols;
+
+                    validity_move.other_rgb_r = other_list->rgb_r;
+                    validity_move.other_rgb_g = other_list->rgb_g;
+                    validity_move.other_rgb_b = other_list->rgb_b;
+                    validity_move.new_x1 = x_new;
+                    validity_move.new_y1 = y_new;
+                    validity_move.valid = 1;
+                }
+            } else if (x_new != x_old) {
+                if (x_new > x_old && board[y_new][x_new] != 0) {
+                    if (board[y_new][x_new] == 1) {
+                        if (board[y_new][x_new - 2] != 1 && x_new - 2 >= 0) {
+                            validity_move.new_x1 = x_new - 2;
+                            validity_move.new_y1 = y_new;
+
+                            board[validity_move.new_y1][validity_move.new_x1] = -(ID + 10);
+                            board[y_old][x_old] = 0;
+                            validity_move.valid = 1;
+                        } else {
+                            validity_move.new_x1 = x_old;
+                            validity_move.new_y1 = y_new;
+
+                            board[validity_move.new_y1][validity_move.new_x1] = -(ID + 10);
+                            board[y_old][x_old] = 0;
+                            validity_move.valid = 1;
+                        }
+                    }
+                } else if (x_new < x_old && board[y_new][x_new] != 0) {
+                    if (board[y_new][x_new] == 1) {
+                        if (board[y_new][x_new + 2] != 1 && x_new + 2 <= n_cols - 1) {
+                            validity_move.new_x1 = x_new + 2;
+                            validity_move.new_y1 = y_new;
+
+                            board[validity_move.new_y1][validity_move.new_x1] = -(ID + 10);
+                            board[y_old][x_old] = 0;
+                            validity_move.valid = 1;
+
+                        } else {
+                            validity_move.new_x1 = x_old;
+                            validity_move.new_y1 = y_new;
+
+                            board[validity_move.new_y1][validity_move.new_x1] = -(ID + 10);
+                            board[y_old][x_old] = 0;
+                            validity_move.valid = 1;
+                        }
+                    }
+                } else {
+                    validity_move.new_y1 = y_new;
+                    validity_move.new_x1 = x_new;
+                    board[y_old][x_old] = 0;
+                    board[y_new][x_new] = -(ID + 10);
+                    validity_move.valid = 1;
+                }
+            } else if (y_new != y_old) {
+                if (y_new > y_old && board[y_new][x_new] != 0) {
+                    if (board[y_new][x_new] == 1) {
+                        if (board[y_new - 2][x_new] != 1 && y_new - 2 >= 0) {
+                            validity_move.new_y1 = y_new - 2;
+                            validity_move.new_x1 = x_new;
+
+                            board[validity_move.new_y1][validity_move.new_x1] = -(ID + 10);
+                            board[y_old][x_old] = 0;
+                            validity_move.valid = 1;
+                        } else {
+                            validity_move.new_y1 = y_old;
+                            validity_move.new_x1 = x_new;
+
+                            board[validity_move.new_y1][validity_move.new_x1] = -(ID + 10);
+                            board[y_old][x_old] = 0;
+                            validity_move.valid = 1;
+                        }
+                    }
+                } else if (y_new < y_old && board[y_new][x_new] != 0) {
+                    if (board[y_new][x_new] == 1) {
+                        if (board[y_new + 2][x_new] != 1 && y_new + 2 <= n_lines - 1) {
+                            validity_move.new_y1 = y_new + 2;
+                            validity_move.new_x1 = x_new;
+
+                            board[validity_move.new_y1][validity_move.new_x1] = -(ID + 10);
+                            board[y_old][x_old] = 0;
+                            validity_move.valid = 1;
+                        } else {
+                            validity_move.new_y1 = y_old;
+                            validity_move.new_x1 = x_new;
+
+                            board[validity_move.new_y1][validity_move.new_x1] = -(ID + 10);
+                            board[y_old][x_old] = 0;
+                            validity_move.valid = 1;
+
+                        }
+                    }
+                } else {
+                    validity_move.new_y1 = y_new;
+                    validity_move.new_x1 = x_new;
+                    board[y_new][x_new] = -(ID + 10);
+                    board[y_old][x_old] = 0;
+                    validity_move.valid = 1;
+                }
+            }
+            return validity_move;
+        }
+    }
+    validity_move.valid = 0;
+    return validity_move;
+}
+
+
+//----------------------------------------------------------//
+//Thread responsible for receiving messages from each player//
+//----------------and deal with initial protocol------------//
+
+
 void * clientThreadi(void * arg){
-    struct threadclient_arg *my_arg = (struct threadclient_arg*)arg;
+    struct threadclient_arg *my_arg = (struct threadclient_arg *)arg;
     int sock_fd=(*my_arg).sock_fd;
     int ID=(*my_arg).ID;
-    int ID_other;
+    //int ID_other;
     //-------------------------------------------------------//
     //----sending board size and sending initial position----//
     //-------------------------------------------------------//
@@ -138,8 +1064,8 @@ void * clientThreadi(void * arg){
         printf("board is full \n");
         //close thread and etc
     }
-    int x_oldp=elem%n_cols;
-    int y_oldp=elem/n_cols;
+    int ini_xp=elem%n_cols;
+    int ini_yp=elem/n_cols;
 
     elem=set_initialpos(board, n_cols,n_lines);
     if(elem<0){
@@ -147,17 +1073,17 @@ void * clientThreadi(void * arg){
         //close thread and etc
     }
 
-    int x_oldm=elem%n_cols;
-    int y_oldm=elem/n_cols;
+    int ini_xm=elem%n_cols;
+    int ini_ym=elem/n_cols;
 
 
-    board[y_oldp][x_oldp]=10+ID;
-    printf("initial pos: x %d,y%d \n",x_oldp,y_oldp);
-    board[y_oldm][x_oldm]=-(10+ID);
-    con_msg.xpac_ini=x_oldp;
-    con_msg.ypac_ini=y_oldp;
-    con_msg.xm_ini=x_oldm;
-    con_msg.ym_ini=y_oldm;
+    board[ini_yp][ini_xp]=10+ID;
+    printf("initial pos: x %d,y%d \n",ini_xp,ini_yp);
+    board[ini_ym][ini_xm]=-(10+ID);
+    con_msg.xpac_ini=ini_xp;
+    con_msg.ypac_ini=ini_yp;
+    con_msg.xm_ini=ini_xm;
+    con_msg.ym_ini=ini_ym;
 
 
     send(sock_fd, &con_msg, sizeof(con_msg), 0);
@@ -169,16 +1095,15 @@ void * clientThreadi(void * arg){
     for(i=0;i<n_lines+1;i++) {
         for (j = 0; j < n_cols + 1; j++) {
         ini_board[i*(n_cols+1)+j]=board[i][j];
-        //printf("%d\n",(i*n_cols)+j);
         }
     }
-    for ( i = 0 ; i < n_lines+1; i++){
+    /*for ( i = 0 ; i < n_lines+1; i++){
         printf("%2d ", i);
         for ( j = 0 ; j < n_cols+1; j++) {
             printf("%d", ini_board[i*(n_cols+1)+j]);
         }
         printf("\n");
-    }
+    }*/
 
     int err=send(sock_fd, ini_board, ((n_lines+1)*(n_cols+1))*sizeof(int), 0);
     printf("%d\n",err);
@@ -210,16 +1135,7 @@ void * clientThreadi(void * arg){
         printf("%d\n",send_list_array[i+3]);
     }
     err=send(sock_fd, &size, sizeof(size), 0);
-    printf(",,, %d\n",err);
     err=send(sock_fd, send_list_array, sizeof(int)*size*4, 0);
-    printf("ola %d\n",err);
-
-
-
-
-
-
-
 
     //-------------------------------------------------------//
     //----------receiving the colour of the character--------//
@@ -235,10 +1151,6 @@ void * clientThreadi(void * arg){
     int rgb_r=rec_msg.r;
     int rgb_g=rec_msg.g;
     int rgb_b=rec_msg.b;
-    int rgb_r_other;
-    int rgb_g_other;
-    int rgb_b_other;
-
 
     //-------------------------------------------------------//
     //paint and send initial positions to all other clients--//
@@ -248,10 +1160,10 @@ void * clientThreadi(void * arg){
     Event_ShownewCharacter_Data *event_data_ini;
 
     event_data_ini = malloc(sizeof(Event_ShownewCharacter_Data));
-    event_data_ini->xp = x_oldp;
-    event_data_ini->yp = y_oldp;
-    event_data_ini->xm = x_oldm;
-    event_data_ini->ym= y_oldm;
+    event_data_ini->xp = ini_xp;
+    event_data_ini->yp = ini_yp;
+    event_data_ini->xm = ini_xm;
+    event_data_ini->ym= ini_ym;
     event_data_ini->r = rgb_r;
     event_data_ini->g = rgb_g;
     event_data_ini->b = rgb_b;
@@ -267,49 +1179,163 @@ void * clientThreadi(void * arg){
     //----------------Insert new client info-----------------//
     //-------------------------------------------------------//
     IDList * this_client = (IDList *) malloc(sizeof(IDList));
-    IDList * other_list= (IDList *) malloc(sizeof(IDList));
     if(this_client == NULL){
         return NULL;
     }
-
     this_client->ID = ID;
     this_client->socket=sock_fd;
     this_client->rgb_r = rgb_r;
     this_client->rgb_g = rgb_g;
     this_client->rgb_b = rgb_b;
+    this_client->xp=ini_xp;
+    this_client->yp=ini_yp;
+    this_client->xm=ini_xm;
+    this_client->ym=ini_ym;
+    this_client->superpower=0;
     this_client->next = NULL;
+
+    //-------------------------------------------------------//
+    //----------------Insert new fruit to the board----------//
+    //-------------------------------------------------------//
+    int error;
+    Fruits_Struct * Cherry_list= (Fruits_Struct *) malloc(sizeof(Fruits_Struct));
+    Fruits_Struct * Lemon_list=  (Fruits_Struct *) malloc(sizeof(Fruits_Struct));
+    if(Clients!=NULL){
+
+        Event_ShownewFruits_Data *event_data_newfruit;
+        event_data_newfruit = malloc(sizeof(Event_ShownewFruits_Data));
+
+        pthread_t thr_fruit1,thr_fruit2;
+
+        elem=set_initialpos(board, n_cols,n_lines);
+        if(elem<0){
+            printf("board is full \n");
+        }
+        board[elem/n_cols][elem%n_cols]=4;
+        event_data_newfruit->x1 =elem%n_cols;
+        event_data_newfruit->y1 =elem/n_cols;
+
+        Cherry_list->fruit=4;
+        Cherry_list->x=elem%n_cols;
+        Cherry_list->y=elem/n_cols;
+        Cherry_list->next = NULL;
+
+        elem=set_initialpos(board, n_cols,n_lines);
+        if(elem<0){
+            printf("board is full \n");
+        }
+        //SYNC here
+        board[elem/n_cols][elem%n_cols]=5;
+        event_data_newfruit->x2=elem%n_cols;
+        event_data_newfruit->y2=elem/n_cols;
+
+        //SYNC here
+        //add fruit lists
+        Lemon_list->fruit=5;
+        Lemon_list->x=elem%n_cols;
+        Lemon_list->y=elem/n_cols;
+        Lemon_list->next = NULL;
+
+
+        Fruits=insert_new_Fruit(Fruits,Cherry_list);
+        Fruits=insert_new_Fruit(Fruits,Lemon_list );
+
+        sem_init(&Cherry_list->sem_fruit1,0,0);
+        sem_init(&Cherry_list->sem_fruit2,0,0);
+        sem_init(&Lemon_list->sem_fruit1,0,0);
+        sem_init(&Lemon_list->sem_fruit2,0,0);
+
+
+        SDL_zero(new_event);
+        new_event.type = Event_ShownewFruits;
+        new_event.user.data1 = event_data_newfruit;
+        SDL_PushEvent(&new_event);
+
+        error = pthread_create(&thr_fruit1,NULL,thr_placefruit, Cherry_list);
+        error = pthread_create(&thr_fruit2,NULL,thr_placefruit, Lemon_list);
+
+
+    }
+
+
     //need to make sync here
     Clients=insert_new_ID(Clients, this_client);
+
+    send_list=Clients;
+    while(send_list!=NULL){
+        printf("%d ",send_list->ID);
+        printf("%d ",send_list->xp);
+        printf("%d ",send_list->yp);
+        printf("%d ",send_list->xm);
+        printf("%d ",send_list->ym);
+        printf("%d ",send_list->rgb_r);
+        printf("%d ",send_list->rgb_g);
+        printf("%d ",send_list->rgb_b);
+        printf("%d ",send_list->socket);
+        printf("%d\n ",send_list->score);
+        send_list=get_next_ID(send_list);
+    }
     //-------------------------------------------------------//
     //---------read the moves made by the client-------------//
     //----loop receiving updated positions  from socket------//
     //-------------------------------------------------------//
-    int x_new,y_new,x2,y2,character,character2,flag_2player=0;
+    int x_new,y_new,character,flag_2player=0;
+
     Event_ShowCharacter_Data *event_data;
     event_data = malloc(sizeof(Event_ShowCharacter_Data));
 
     Event_Change2Characters_Data *event_data2player;
     event_data2player = malloc(sizeof(Event_Change2Characters_Data));
 
+    Event_Disconnect_Data *event_data_final;
+    event_data_final = malloc(sizeof(Event_Disconnect_Data));
+
+    Event_Clean2Fruits_Data *event_data_cleanfruit;
+    event_data_cleanfruit = malloc(sizeof(Event_Clean2Fruits_Data));
+
+    valid_move validity_move;
     //-------------------------------------------------------//
     //---------initiliaze sync variables for-------- --------//
     //-------------------------------------------------------//
-    printf("ola \n");
-    /*
-    struct sem_nplayspersec arg_sem;
-    int error;
-    arg_sem = malloc(sizeof(struct sem_nplayspersec));
-    int sem_value;
-    pthread_t thr_nplayspersec;
-    printf("ola \n");
-    sem_init(arg_sem->sem_nplay1, 0, 0);
-    sem_init(arg_sem->sem_nplay2, 0, 1);
-    printf("ola\n");
-    error = pthread_create(&thr_nplayspersec,NULL,thr_forplayspersec , &arg_nplaypersec);
-    printf("ola\n");
-     */
 
+    struct sem_nplayspersec arg_sem1;
+    int sem_value_nplaypersec;
+    pthread_t thr_nplayspersec1;
+    sem_init(&arg_sem1.sem_nplay1, 0, 0);
+    sem_init(&arg_sem1.sem_nplay2, 0, 1);
+    error = pthread_create(&thr_nplayspersec1,NULL,thr_forplayspersec , &arg_sem1);
 
+    struct sem_nplayspersec arg_sem3;
+    pthread_t thr_nplayspersec3;
+    sem_init(&arg_sem3.sem_nplay1, 0, 0);
+    sem_init(&arg_sem3.sem_nplay2, 0, 1);
+    error = pthread_create(&thr_nplayspersec3,NULL,thr_forplayspersec , &arg_sem3);
+
+    pthread_t thr_ina1;
+    struct sem_inactivity inactivity1;
+    sem_init(&inactivity1.sem_inactivity,0,0);
+    inactivity1.ID=ID;
+    inactivity1.character=1;
+    inactivity1.rgb_r=rgb_r;
+    inactivity1.rgb_g=rgb_g;
+    inactivity1.rgb_b=rgb_b;
+    error = pthread_create(&thr_ina1,NULL,thr_inactivity, &inactivity1);
+
+    pthread_t thr_ina3;
+    struct sem_inactivity inactivity3;
+    sem_init(&inactivity3.sem_inactivity,0,0);
+    inactivity3.ID=ID;
+    inactivity3.character=3;
+    inactivity3.rgb_r=rgb_r;
+    inactivity3.rgb_g=rgb_g;
+    inactivity3.rgb_b=rgb_b;
+    error = pthread_create(&thr_ina3,NULL,thr_inactivity, &inactivity3);
+
+    int x_old;
+    int y_old;
+    int superpower=0;
+    IDList * other_client = (IDList *) malloc(sizeof(IDList));
+    int ID_other;
 
     while((err_rcv=recv(sock_fd, &msg_pos, sizeof(msg_pos),0))>0){
         printf("cycle receiving %d byte %d %d %d\n",err_rcv,msg_pos.character,msg_pos.x,msg_pos.y);
@@ -317,317 +1343,533 @@ void * clientThreadi(void * arg){
         y_new = msg_pos.y;
         character=msg_pos.character;
 
-        //sem_getvalue(arg_sem->sem_nplay2, &sem_value);
-        //if(sem_value==0){
-        //    continue;
-        //}
+        // get old position NEED SYNC
+        if(character==1 ){
+            x_old=this_client->xp;
+            y_old=this_client->yp;
+            printf("old_p x: %d y: %d \n",x_old,y_old);
+        }
+        if(character==3){
+            x_old=this_client->xm;
+            y_old=this_client->ym;
+            superpower=this_client->superpower;
+            printf("old_m x: %d y: %d \n",x_old,y_old);
+        }
+
+
 
         if(character==-1){
+
+            //NEED SYNC HERE
+            board[this_client->yp][this_client->xp]=0;
+            board[this_client->ym][this_client->xm]=0;
+            event_data_final->xm= this_client->xm;
+            event_data_final->ym = this_client->ym;
+            event_data_final->xp = this_client->xp;
+            event_data_final->yp = this_client->yp;
             //clean this client of client list
             Clients =remove_ID(Clients,this_client);
             //clean this client of the board representation
-            board[y_oldp][x_oldp]=0;
-            board[y_oldm][x_oldm]=0;
 
 
-            event_data->character=-1;
-            event_data->x = x_oldm;
-            event_data->y = y_oldm;
-            event_data->x_old = x_oldp;
-            event_data->y_old = y_oldp;
+            //--------------needs to be done---------------//
+            //Clean two fuits of the board if Clients!=NULL
+            if(Clients!=NULL) {
+                Cherry_list = get_fruit_list(Fruits, 4);
+                Lemon_list = get_fruit_list(Fruits, 5);
+
+                //NEED SYNC HERE and free
+                board[Cherry_list->y][Cherry_list->x] = 0;
+                board[Lemon_list->y][Lemon_list->x] = 0;
+
+                event_data_cleanfruit->x1=Cherry_list->x;
+                event_data_cleanfruit->y1=Cherry_list->y;
+                event_data_cleanfruit->x2=Lemon_list->x;
+                event_data_cleanfruit->y2=Lemon_list->y;
+
+                SDL_zero(new_event);
+                new_event.type = Event_Clean2Fruits;
+                new_event.user.data1 = event_data_cleanfruit;
+                SDL_PushEvent(&new_event);
+
+                //NEED SYNC HERE and free
+                Fruits =remove_fruit_list(Fruits, Cherry_list);
+                Fruits =remove_fruit_list(Fruits, Lemon_list);
+            }
+
             // send the event
             SDL_zero(new_event);
-            new_event.type = Event_ShowCharacter;
-            new_event.user.data1 = event_data;
+            new_event.type = Event_Disconnect;
+            new_event.user.data1 = event_data_final;
             SDL_PushEvent(&new_event);
+
+            //clear semaphores
+            sem_destroy(&inactivity1.sem_inactivity);
+            sem_destroy(&inactivity3.sem_inactivity);
+            sem_destroy(&arg_sem1.sem_nplay1);
+            sem_destroy(&arg_sem1.sem_nplay2);
+            sem_destroy(&arg_sem3.sem_nplay1);
+            sem_destroy(&arg_sem3.sem_nplay2);
+            pthread_join(thr_ina1, NULL);
+            pthread_join(thr_ina3, NULL);
+            pthread_join(thr_nplayspersec1, NULL);
+            pthread_join(thr_nplayspersec3, NULL);
+
+
+
 
             //clear socket
             puts("client disconnected");
             close(sock_fd);
             pthread_exit(NULL);
-        }
-
-        if(character==1){
+        }else if (x_new==x_old && y_new==y_old){
             //check if position has changed
-            if(x_new==x_oldp && y_new==y_oldp){
-                continue;
-            }
+            continue;
+        }else{
+            if (character==1 ) {
 
-            for ( i = 0 ; i < n_lines+1; i++){
-                printf("%2d ", i);
-                for ( j = 0 ; j < n_cols+1; j++) {
-                    printf("%d", board[i][j]);
+                sem_getvalue(&arg_sem1.sem_nplay2, &sem_value_nplaypersec);
+                if (sem_value_nplaypersec == 0) {
+                    continue;
+                } else {
+                    if(this_client->superpower>0){
+                        character=2;
+                    }
+                    validity_move = check_move(Clients, x_new, y_new, x_old, y_old, character, ID, this_client->superpower);
+
+                    if (validity_move.valid == 1 && (validity_move.character1 == 1 || validity_move.character1 == 2)) {
+                        this_client->xp = validity_move.new_x1;
+                        this_client->yp = validity_move.new_y1;
+                    } else if (validity_move.valid == 1 && validity_move.flag2player == 2 &&
+                               (validity_move.character2 == 1 || validity_move.character2 == 2)) {
+                        this_client->xp = validity_move.new_x2;
+                        this_client->yp = validity_move.new_y2;
+                    }
+                    if (validity_move.valid == 1 && validity_move.character1 == 3) {
+                        this_client->xm = validity_move.new_x1;
+                        this_client->ym = validity_move.new_y1;
+                    } else if (validity_move.valid == 1 && validity_move.character2 == 3 &&
+                               validity_move.flag2player == 2) {
+                        this_client->xm = validity_move.new_x2;
+                        this_client->ym = validity_move.new_y2;
+                    }
+                    printf("xp: %d yp: %d valid: %d\n", this_client->xp, this_client->yp, validity_move.valid);
+                    printf("xp: %d yp: %d valid: %d\n", this_client->xm, this_client->ym, validity_move.valid);
+
+                    printf("wtf is happening %d\n",validity_move.flag_newfruit);
+                    if(validity_move.valid == 1 && validity_move.flag_newfruit == 1){
+
+                        this_client->superpower=1;
+
+                        Cherry_list = get_fruit_list(Fruits,4);
+                        sem_post(&Cherry_list->sem_fruit1);
+
+                        this_client->score++;
+
+                        event_data->character = 2;
+                        event_data->x = validity_move.new_x1;
+                        event_data->y = validity_move.new_y1;
+                        event_data->x_old = x_old;
+                        event_data->y_old = y_old;
+                        event_data->r = rgb_r;
+                        event_data->g = rgb_g;
+                        event_data->b = rgb_b;
+
+                        // send the event
+                        SDL_zero(new_event);
+                        new_event.type = Event_ShowCharacter;
+                        new_event.user.data1 = event_data;
+                        SDL_PushEvent(&new_event);
+
+                        sem_post(&inactivity1.sem_inactivity);
+                        sem_wait(&arg_sem1.sem_nplay2);
+                        sem_post(&arg_sem1.sem_nplay1);
+
+                    }else if(validity_move.valid == 1 && validity_move.flag_newfruit == 2){
+
+                        this_client->superpower=1;
+                        Lemon_list = get_fruit_list(Fruits,5);
+                        sem_post(&Lemon_list->sem_fruit1);
+
+                        this_client->score++;
+
+                        event_data->character = 2;
+                        event_data->x = validity_move.new_x1;
+                        event_data->y = validity_move.new_y1;
+                        event_data->x_old = x_old;
+                        event_data->y_old = y_old;
+                        event_data->r = rgb_r;
+                        event_data->g = rgb_g;
+                        event_data->b = rgb_b;
+
+                        // send the event
+                        SDL_zero(new_event);
+                        new_event.type = Event_ShowCharacter;
+                        new_event.user.data1 = event_data;
+                        SDL_PushEvent(&new_event);
+
+                        sem_post(&inactivity1.sem_inactivity);
+                        sem_wait(&arg_sem1.sem_nplay2);
+                        sem_post(&arg_sem1.sem_nplay1);
+
+                    }else if (validity_move.valid == 1) {
+                        flag_2player = validity_move.flag2player;
+                        printf("flag2player: %d\n", flag_2player);
+                        if (flag_2player == 0) {
+
+                            if(validity_move.character2==3) {
+                                ID_other = (-board[validity_move.new_y2][validity_move.new_x2])-10;
+                                other_client = get_IDlist(Clients, ID_other);
+                                other_client->score++;
+                            }
+
+                            event_data->character = validity_move.character1;
+                            event_data->x = validity_move.new_x1;
+                            event_data->y = validity_move.new_y1;
+                            event_data->x_old = x_old;
+                            event_data->y_old = y_old;
+                            event_data->r = rgb_r;
+                            event_data->g = rgb_g;
+                            event_data->b = rgb_b;
+
+                            // send the event
+                            SDL_zero(new_event);
+                            new_event.type = Event_ShowCharacter;
+                            new_event.user.data1 = event_data;
+                            SDL_PushEvent(&new_event);
+                        }
+                        if (flag_2player == 1 || flag_2player == 3) {
+                            if(flag_2player==3){
+                                // superpacman eats a monster
+                                this_client->superpower++;
+                                if (this_client->superpower>=3){
+                                    this_client->superpower=0;
+                                    validity_move.character1=1;
+                                }
+                                this_client->score++;
+
+                            }
+                            event_data2player->character1 = validity_move.character1;
+                            event_data2player->x1 = validity_move.new_x1;
+                            event_data2player->y1 = validity_move.new_y1;
+                            event_data2player->x1_old = x_old;
+                            event_data2player->y1_old = y_old;
+                            event_data2player->character2 = validity_move.character2;
+                            event_data2player->x2 = validity_move.new_x2;
+                            event_data2player->y2 = validity_move.new_y2;
+                            event_data2player->r1 = rgb_r;
+                            event_data2player->g1 = rgb_g;
+                            event_data2player->b1 = rgb_b;
+                            event_data2player->r2 = validity_move.other_rgb_r;
+                            event_data2player->g2 = validity_move.other_rgb_g;
+                            event_data2player->b2 = validity_move.other_rgb_b;
+
+                            // send the event
+                            SDL_zero(new_event);
+                            new_event.type = Event_Change2Characters;
+                            new_event.user.data1 = event_data2player;
+                            SDL_PushEvent(&new_event);
+                            flag_2player = 0;
+                        }
+                        if (flag_2player == 2) {
+                            event_data2player->character1 = validity_move.character1;
+                            event_data2player->x1 = validity_move.new_x1;
+                            event_data2player->y1 = validity_move.new_y1;
+                            event_data2player->x1_old = x_old;
+                            event_data2player->y1_old = y_old;
+                            event_data2player->character2 = validity_move.character2;
+                            event_data2player->x2 = validity_move.new_x2;
+                            event_data2player->y2 = validity_move.new_y2;
+                            event_data2player->r1 = rgb_r;
+                            event_data2player->g1 = rgb_g;
+                            event_data2player->b1 = rgb_b;
+                            event_data2player->r2 = rgb_r;
+                            event_data2player->g2 = rgb_g;
+                            event_data2player->b2 = rgb_b;
+
+                            // send the event
+                            SDL_zero(new_event);
+                            new_event.type = Event_Change2Characters;
+                            new_event.user.data1 = event_data2player;
+                            SDL_PushEvent(&new_event);
+                            flag_2player = 0;
+                        }
+
+                        for (i = 0; i < n_lines + 1; i++) {
+                            printf("%2d ", i);
+                            for (j = 0; j < n_cols + 1; j++) {
+                                printf("%3d", board[i][j]);
+                            }
+                            printf("\n");
+                        }
+                        sem_post(&inactivity1.sem_inactivity);
+                        sem_wait(&arg_sem1.sem_nplay2);
+                        sem_post(&arg_sem1.sem_nplay1);
+                    }
                 }
-                printf("\n");
-            }
-            // here see if play is legal
-            // check if it is the 4 adjacent places (down, up,left,right)
-            board[y_oldp][x_oldp]=0;
+            }else if(character==3){
+                sem_getvalue(&arg_sem3.sem_nplay2, &sem_value_nplaypersec);
+                if (sem_value_nplaypersec == 0) {
+                    continue;
+                } else {
+                    validity_move = check_move(Clients, x_new, y_new, x_old, y_old, character, ID,superpower);
 
-            if(((x_new-1==x_oldp || x_new+1==x_oldp)&& y_new==y_oldp)||((y_new-1==y_oldp || y_new+1==y_oldp)&& x_new==x_oldp)){
-                //valid
-                if(board[y_new][x_new]>10){
-                    ID_other=board[y_new][x_new]-10;
-                    board[y_oldp][x_oldp]=board[y_new][x_new];
-                    board[y_new][x_new]=10+ID;
-                    flag_2player=1;
-                    character2=1;
-                    x2=x_oldp;
-                    y2=y_oldp;
-                    other_list=get_IDlist(Clients,ID_other);
-                    printf("ola\n");
-                    rgb_r_other=other_list->rgb_r;
-                    rgb_g_other=other_list->rgb_g;
-                    rgb_b_other=other_list->rgb_b;
+                    if (validity_move.valid == 1 && (validity_move.character1 == 1 || validity_move.character1 == 2)) {
+                        this_client->xp = validity_move.new_x1;
+                        this_client->yp = validity_move.new_y1;
+                    } else if (validity_move.valid == 1 && validity_move.flag2player == 2 &&
+                               (validity_move.character2 == 1 || validity_move.character2 == 2)) {
+                        this_client->xp = validity_move.new_x2;
+                        this_client->yp = validity_move.new_y2;
+                    }
+                    if (validity_move.valid == 1 && validity_move.character1 == 3) {
+                        this_client->xm = validity_move.new_x1;
+                        this_client->ym = validity_move.new_y1;
+                    } else if (validity_move.valid == 1 && validity_move.character2 == 3 &&
+                               validity_move.flag2player == 2) {
+                        this_client->xm = validity_move.new_x2;
+                        this_client->ym = validity_move.new_y2;
+                    }
+                    printf("xp: %d yp: %d valid: %d\n", this_client->xp, this_client->yp, validity_move.valid);
+                    printf("xp: %d yp: %d valid: %d\n", this_client->xm, this_client->ym, validity_move.valid);
+                    //get old position
+                    //board[y_oldp][x_oldp]=0;
+                    // here see if play is legal
+                    // check if it is the 4 adjacent places (down, up,left,right)
+
+                    // check if it going against a brick or the limit of the board it will be bounced back
+                    //if the character cannot be bounced back it will stay at the same place
+                    printf("fruit id: %d\n", validity_move.flag_newfruit);
+                    if(validity_move.valid == 1 && validity_move.flag_newfruit == 1){
+                        Cherry_list = get_fruit_list(Fruits,4);
+                        sem_post(&Cherry_list->sem_fruit1);
+
+                        this_client->score++;
+
+                        event_data->character = validity_move.character1;
+                        event_data->x = validity_move.new_x1;
+                        event_data->y = validity_move.new_y1;
+                        event_data->x_old = x_old;
+                        event_data->y_old = y_old;
+                        event_data->r = rgb_r;
+                        event_data->g = rgb_g;
+                        event_data->b = rgb_b;
+
+                        // send the event
+                        SDL_zero(new_event);
+                        new_event.type = Event_ShowCharacter;
+                        new_event.user.data1 = event_data;
+                        SDL_PushEvent(&new_event);
+
+                        sem_post(&inactivity3.sem_inactivity);
+                        sem_wait(&arg_sem3.sem_nplay2);
+                        sem_post(&arg_sem3.sem_nplay1);
+
+                    }else if(validity_move.valid == 1 && validity_move.flag_newfruit == 2){
+                        Lemon_list = get_fruit_list(Fruits,5);
+                        sem_post(&Lemon_list->sem_fruit1);
+
+                        this_client->score++;
+
+                        event_data->character = validity_move.character1;
+                        event_data->x = validity_move.new_x1;
+                        event_data->y = validity_move.new_y1;
+                        event_data->x_old = x_old;
+                        event_data->y_old = y_old;
+                        event_data->r = rgb_r;
+                        event_data->g = rgb_g;
+                        event_data->b = rgb_b;
+
+                        // send the event
+                        SDL_zero(new_event);
+                        new_event.type = Event_ShowCharacter;
+                        new_event.user.data1 = event_data;
+                        SDL_PushEvent(&new_event);
+
+                        sem_post(&inactivity3.sem_inactivity);
+                        sem_wait(&arg_sem3.sem_nplay2);
+                        sem_post(&arg_sem3.sem_nplay1);
+
+                    }else if (validity_move.valid == 1) {
+                        flag_2player = validity_move.flag2player;
+                        printf("flag2player: %d\n", flag_2player);
+                        if (flag_2player == 0 || flag_2player == 4) {
+                            if(flag_2player==4){
+                                // monster gets eaten
+
+                                ID_other = board[validity_move.new_y2][validity_move.new_x2]-10-1;
+                                other_client = get_IDlist(Clients, ID_other);
+                                other_client->score++;
+                                other_client->superpower++;
+
+                                //superpowerpacman
+                                //gets eaten
+
+                                printf("svddgv %d\n",other_client->superpower);
+                                if (other_client->superpower>=3){
+                                    other_client->superpower=0;
+
+
+                                    board[validity_move.new_y2][validity_move.new_x2]=board[validity_move.new_y2][validity_move.new_x2]-1;
+
+                                    event_data->character = 1;
+                                    event_data->x = validity_move.new_x2;
+                                    event_data->y = validity_move.new_y2;
+                                    event_data->x_old = validity_move.new_x2;
+                                    event_data->y_old = validity_move.new_y2;
+                                    event_data->r = validity_move.other_rgb_r;
+                                    event_data->g = validity_move.other_rgb_g;
+                                    event_data->b = validity_move.other_rgb_b;
+
+                                    // send the event
+                                    SDL_zero(new_event);
+                                    new_event.type = Event_ShowCharacter;
+                                    new_event.user.data1 = event_data;
+                                    SDL_PushEvent(&new_event);
+                                }
+                            }
+
+                            event_data = malloc(sizeof(Event_ShowCharacter_Data));
+                            event_data->character = validity_move.character1;
+                            event_data->x = validity_move.new_x1;
+                            event_data->y = validity_move.new_y1;
+                            event_data->x_old = x_old;
+                            event_data->y_old = y_old;
+                            event_data->r = rgb_r;
+                            event_data->g = rgb_g;
+                            event_data->b = rgb_b;
+
+                            // send the event
+                            SDL_zero(new_event);
+                            new_event.type = Event_ShowCharacter;
+                            new_event.user.data1 = event_data;
+                            SDL_PushEvent(&new_event);
+                        }
+                        if (flag_2player == 1) {
+
+                            if(validity_move.character2==1){
+                                this_client->score++;
+                            }
+
+                            event_data2player->character1 = validity_move.character1;
+                            event_data2player->x1 = validity_move.new_x1;
+                            event_data2player->y1 = validity_move.new_y1;
+                            event_data2player->x1_old = x_old;
+                            event_data2player->y1_old = y_old;
+                            event_data2player->character2 = validity_move.character2;
+                            event_data2player->x2 = validity_move.new_x2;
+                            event_data2player->y2 = validity_move.new_y2;
+                            event_data2player->r1 = rgb_r;
+                            event_data2player->g1 = rgb_g;
+                            event_data2player->b1 = rgb_b;
+                            event_data2player->r2 = validity_move.other_rgb_r;
+                            event_data2player->g2 = validity_move.other_rgb_g;
+                            event_data2player->b2 = validity_move.other_rgb_b;
+
+                            // send the event
+                            SDL_zero(new_event);
+                            new_event.type = Event_Change2Characters;
+                            new_event.user.data1 = event_data2player;
+                            SDL_PushEvent(&new_event);
+                            flag_2player = 0;
+                        }
+                        if (flag_2player == 2) {
+                            event_data2player->character1 = validity_move.character1;
+                            event_data2player->x1 = validity_move.new_x1;
+                            event_data2player->y1 = validity_move.new_y1;
+                            event_data2player->x1_old = x_old;
+                            event_data2player->y1_old = y_old;
+                            event_data2player->character2 = validity_move.character2;
+                            event_data2player->x2 = validity_move.new_x2;
+                            event_data2player->y2 = validity_move.new_y2;
+                            event_data2player->r1 = rgb_r;
+                            event_data2player->g1 = rgb_g;
+                            event_data2player->b1 = rgb_b;
+                            event_data2player->r2 = rgb_r;
+                            event_data2player->g2 = rgb_g;
+                            event_data2player->b2 = rgb_b;
+
+                            // send the event
+                            SDL_zero(new_event);
+                            new_event.type = Event_Change2Characters;
+                            new_event.user.data1 = event_data2player;
+                            SDL_PushEvent(&new_event);
+                            flag_2player = 0;
+                        }
+
+                        for (i = 0; i < n_lines + 1; i++) {
+                            printf("%2d ", i);
+                            for (j = 0; j < n_cols + 1; j++) {
+                                printf("%3d", board[i][j]);
+                            }
+                            printf("\n");
+                        }
+                        sem_post(&inactivity3.sem_inactivity);
+                        sem_wait(&arg_sem3.sem_nplay2);
+                        sem_post(&arg_sem3.sem_nplay1);
+                    }
                 }
-                else if(board[y_new][x_new]==-(ID+10)){
-                    board[y_oldp][x_oldp]=board[y_new][x_new];
-                    board[y_new][x_new]=ID+10;
-                    flag_2player=1;
-                    character2=3;
-                    x2=x_oldp;
-                    y2=y_oldp;
-                    rgb_r_other=rgb_r;
-                    rgb_g_other=rgb_g;
-                    rgb_b_other=rgb_b;
-
-                }
-                else if(x_new!=x_oldp){
-                    if(x_new>(n_cols-1)){
-                        if(board[y_new][n_cols-2]== 0 ){
-                            board[y_new][n_cols-2]=10+ID;
-                            x_new= n_cols-2;
-                        }
-                        else{
-                            x_new=x_oldp;
-                        }
-                    }
-                    else if(x_new<0){
-                        if(board[y_new][1]== 0 ){
-                            board[y_new][1]=10+ID;
-                            x_new=1;
-                        }
-                        else{
-                            x_new=x_oldp;
-                        }
-                    }
-                    else if(x_new>x_oldp){
-                        if(board[y_new][x_new]==1){
-                            if(board[y_new][x_new-2]!=1 && x_new-2>=0) {
-                                x_new = x_new - 2;
-                            }
-                            else {
-                                x_new=x_oldp;
-                            }
-                        }
-                    }
-                    else if(x_new<x_oldp){
-                        if(board[y_new][x_new]==1){
-                            if(board[y_new][x_new+2]!=1 && x_new+2<=n_cols-1) {
-                                x_new = x_new + 2;
-                            }
-                             else {
-                                x_new = x_oldp;
-                            }
-                        }
-                    }
-                }
-                else if(y_new!=y_oldp){
-                    if(y_new>(n_lines-1)){
-                        if(board[n_lines-2][x_new]== 0 ){
-                            board[n_lines-2][x_new]=10+ID;
-                            y_new= n_lines-2;
-                        }
-                        else{
-                            y_new=y_oldp;
-                        }
-                    }
-                    if(y_new<0){
-                        if(board[1][x_new]== 0 ){
-                            board[1][x_new]=10+ID;
-                            y_new= 1;
-                        }
-                        else{
-                            y_new=y_oldp;
-                        }
-                    }
-                    if(y_new>y_oldp){
-                        if(board[y_new][x_new]==1){
-                            if(board[y_new-2][x_new]!=1 && y_new-2>=0) {
-                                y_new = y_new - 2;
-                            }
-                            else {
-                                y_new=y_oldp;
-                            }
-                        }
-                    }
-                    if(y_new<y_oldp){
-                        if(board[y_new][x_new]==1){
-                            if( board[y_new+2][x_new]!=1 && y_new+2<=n_lines-1) {
-                                y_new = y_new + 2;
-                            }
-                            else {
-                                y_new = y_oldp;
-                            }
-                        }
-                    }
-                }
-
-
-
-            }
-            else{
-                continue;
-            }
-            // check if it going against a brick or the limit of the board it will be bounced back
-            //if the character cannot be bounced back it will stay at the same place
-
-            board[y_new][x_new]=10+ID;
-
-            if (flag_2player==0) {
-                event_data->character = character;
-                event_data->x = x_new;
-                event_data->y = y_new;
-                event_data->x_old = x_oldp;
-                event_data->y_old = y_oldp;
-                event_data->r = rgb_r;
-                event_data->g = rgb_g;
-                event_data->b = rgb_b;
-
-                // send the event
-                SDL_zero(new_event);
-                new_event.type = Event_ShowCharacter;
-                new_event.user.data1 = event_data;
-                SDL_PushEvent(&new_event);
-                x_oldp = x_new;
-                y_oldp = y_new;
-            }
-            if (flag_2player==1){
-                event_data2player->character1 = character;
-                event_data2player->x1 = x_new;
-                event_data2player->y1 = y_new;
-                event_data2player->character2 = character2;
-                event_data2player->x2 = x2;
-                event_data2player->y2 = y2;
-                event_data2player->r1 = rgb_r;
-                event_data2player->g1 = rgb_g;
-                event_data2player->b1 = rgb_b;
-                event_data2player->r2 = rgb_r_other;
-                event_data2player->g2 = rgb_g_other;
-                event_data2player->b2 = rgb_b_other;
-
-                // send the event
-                SDL_zero(new_event);
-                new_event.type = Event_Change2Characters;
-                new_event.user.data1 = event_data2player;
-                SDL_PushEvent(&new_event);
-                x_oldp = x_new;
-                y_oldp = y_new;
-
-                flag_2player=0;
-
             }
         }
-
-        if(character==2){
-            //check if position has changed
-            if(x_new==x_oldp && y_new==y_oldp){
-                continue;
-            }
-
-            board[y_oldp][x_oldp]=0;
-            // here see if play is legal
-            board[y_new][x_new]=10+ID;
-            //
-            event_data->character=character;
-            event_data->x = x_new;
-            event_data->y = y_new;
-            event_data->x_old = x_oldp;
-            event_data->y_old = y_oldp;
-            event_data->r = rgb_r;
-            event_data->g = rgb_g;
-            event_data->b = rgb_b;
-
-            // send the event
-            SDL_zero(new_event);
-            new_event.type = Event_ShowCharacter;
-            new_event.user.data1 = event_data;
-            SDL_PushEvent(&new_event);
-            x_oldp=x_new;
-            y_oldp=y_new;
-        }
-
-        if(character==3){
-            if(x_new==x_oldm && y_new==y_oldm){
-                continue;
-            }
-
-
-            // here see if play is legal
-            // check if it is the 4 adjacent places (down, up,left,right)
-            if(((x_new-1==x_oldm || x_new+1==x_oldm)&& y_new==y_oldm)||((y_new-1==y_oldm || y_new+1==y_oldm)&& x_new==x_oldm)){
-                //valid
-                board[y_oldm][x_oldm]=0;
-            }
-            else{
-                continue;
-            }
-            // check if it going against a brick or the limit of the board it will be bounced back
-            //if the character cannot be bounced back it will stay at the same place
-
-            board[y_new][x_new]=-(10+ID);
-
-            event_data->character=character;
-            event_data->x = x_new;
-            event_data->y = y_new;
-            event_data->x_old = x_oldm;
-            event_data->y_old = y_oldm;
-            event_data->r = rgb_r;
-            event_data->g = rgb_g;
-            event_data->b = rgb_b;
-
-            // send the event
-            SDL_zero(new_event);
-            new_event.type = Event_ShowCharacter;
-            new_event.user.data1 = event_data;
-            SDL_PushEvent(&new_event);
-            x_oldm=x_new;
-            y_oldm=y_new;
-
-        }
-        /*
-        sem_wait(arg_sem->sem_nplay2);
-        sem_post(arg_sem->sem_nplay1);
-        */
 
     }
 
+    //NEED SYNC HERE
+    board[this_client->yp][this_client->xp]=0;
+    board[this_client->ym][this_client->xm]=0;
+    event_data_final->xm= this_client->xm;
+    event_data_final->ym = this_client->ym;
+    event_data_final->xp = this_client->xp;
+    event_data_final->yp = this_client->yp;
+    //clean this client of client list
     Clients =remove_ID(Clients,this_client);
-
     //clean this client of the board representation
-    board[y_oldp][x_oldp]=0;
-    board[y_oldm][x_oldm]=0;
 
 
-    event_data = malloc(sizeof(Event_ShowCharacter_Data));
-    event_data->character=-1;
-    event_data->x = x_oldm;
-    event_data->y = y_oldm;
-    event_data->x_old = x_oldp;
-    event_data->y_old = y_oldp;
-    event_data->r = 0;
-    event_data->g = 0;
-    event_data->b = 0;
+    //--------------needs to be done---------------//
+    //Clean two fuits of the board if Clients!=NULL
+    if(Clients!=NULL) {
+        Cherry_list = get_fruit_list(Fruits, 4);
+        Lemon_list = get_fruit_list(Fruits, 5);
+
+        //NEED SYNC HERE and free
+        board[Cherry_list->y][Cherry_list->x] = 0;
+        board[Lemon_list->y][Lemon_list->x] = 0;
+
+        event_data_cleanfruit->x1=Cherry_list->x;
+        event_data_cleanfruit->y1=Cherry_list->y;
+        event_data_cleanfruit->x2=Lemon_list->x;
+        event_data_cleanfruit->y2=Lemon_list->y;
+
+        SDL_zero(new_event);
+        new_event.type = Event_Clean2Fruits;
+        new_event.user.data1 = event_data_cleanfruit;
+        SDL_PushEvent(&new_event);
+        //NEED SYNC HERE and free
+        Fruits =remove_fruit_list(Fruits, Cherry_list);
+        Fruits =remove_fruit_list(Fruits, Lemon_list);
+
+    }
 
     // send the event
     SDL_zero(new_event);
-    new_event.type = Event_ShowCharacter;
-    new_event.user.data1 = event_data;
+    new_event.type = Event_Disconnect;
+    new_event.user.data1 = event_data_final;
     SDL_PushEvent(&new_event);
 
+    //clear semaphores
+    error=sem_destroy(&inactivity1.sem_inactivity);
+    sem_destroy(&inactivity3.sem_inactivity);
+    sem_destroy(&arg_sem1.sem_nplay1);
+    sem_destroy(&arg_sem1.sem_nplay2);
+    sem_destroy(&arg_sem3.sem_nplay1);
+    sem_destroy(&arg_sem3.sem_nplay2);
+    pthread_join(thr_ina1, NULL);
+    pthread_join(thr_ina3, NULL);
+    pthread_join(thr_nplayspersec1, NULL);
+    pthread_join(thr_nplayspersec3, NULL);
 
     //clear socket
-    puts("client disconnected");
     close(sock_fd);
     printf("%d %d\n", n_cols, n_lines);
     for ( i = 0 ; i < n_lines+1; i++){
@@ -665,7 +1907,32 @@ void * thread_Accept(void * argc){
         (*arg).ID=ID;
         pthread_create(&clientthread_id, NULL, clientThreadi, (void*)arg);
         printf("accepted connection \n");
-        ID++;
+        ID=ID+2;
+    }
+    return (NULL);
+}
+
+void * send_scores(void * argc){
+    IDList *aux;
+    while(1){
+
+        sleep(60);
+
+        if(Clients==NULL){
+            continue;
+        }else{
+            if(Clients->next==NULL){
+                Clients->score=0;
+                printf("Client ID: %d score: %d \n\n", Clients->ID, Clients->score);
+            } else {
+                aux=Clients;
+                while (aux != NULL) {
+                    printf("Client ID: %d score: %d \n\n", aux->ID, aux->score);
+                    aux = get_next_ID(aux);
+                }
+            }
+        }
+
     }
     return (NULL);
 }
@@ -682,7 +1949,8 @@ int main(int argc , char* argv[]){
 
     SDL_Event event;
     int done=0;
-
+    printf("%p\n",Clients);
+    printf("ola\n");
     //------------------------------------------------//
     // ----------create corresponding board --------- //
     //-----------read file from board file-- ---------//
@@ -738,6 +2006,7 @@ int main(int argc , char* argv[]){
 
 
     pthread_t thread_Accept_id;
+    pthread_t thread_score;
     // create thread Accept
     struct sockaddr_in server_local_addr;
     server_socket = socket(AF_INET, SOCK_STREAM, 0);
@@ -759,11 +2028,7 @@ int main(int argc , char* argv[]){
     }
 
     pthread_create(&thread_Accept_id, NULL, thread_Accept, NULL);
-
-
-
-
-
+    pthread_create(&thread_score, NULL, send_scores, NULL);
 
     int rgb_r;
     int rgb_g;
@@ -781,8 +2046,10 @@ int main(int argc , char* argv[]){
     Event_ShowCharacter= SDL_RegisterEvents(1);
     Event_Change2Characters= SDL_RegisterEvents(1);
     Event_ShownewCharacter= SDL_RegisterEvents(1);
-
-
+    Event_Inactivity= SDL_RegisterEvents(1);
+    Event_Disconnect= SDL_RegisterEvents(1);
+    Event_ShowFruit=SDL_RegisterEvents(1);
+    Event_ShownewFruits=SDL_RegisterEvents(1);
 
     while (!done){
         while (SDL_PollEvent(&event)) {
@@ -806,7 +2073,7 @@ int main(int argc , char* argv[]){
                 rgb_b = data->b;
 
                 paint_pacman(x_newp, y_newp, rgb_r, rgb_g, rgb_b);
-                printf("new pacman x-%d y-%d\n", x_newp, y_character);
+                printf("new pacman x-%d y-%d\n", x_newp, y_newp);
                 paint_monster(x_newm, y_newm, rgb_r, rgb_g, rgb_b);
                 printf("new monster x-%d y-%d\n", x_newm, y_newm);
 
@@ -820,7 +2087,7 @@ int main(int argc , char* argv[]){
                 msg.b = data->b;
                 //SYNC MECHANISM
                 IDList *aux = Clients;
-                while(aux != NULL){
+                while (aux != NULL) {
                     send(aux->socket, &msg, sizeof(msg), 0);
                     aux = aux->next;
 
@@ -832,6 +2099,178 @@ int main(int argc , char* argv[]){
                 Event_ShowCharacter_Data *data = event.user.data1;
                 clear_place(data->x_old, data->y_old);
 
+                x_character = data->x;
+                y_character = data->y;
+                rgb_r = data->r;
+                rgb_g = data->g;
+                rgb_b = data->b;
+
+                msg.character = data->character;
+                //printf("%d\n", data->character);
+                msg.x = x_character;
+                msg.y = y_character;
+                msg.x_old = data->x_old;
+                msg.y_old = data->y_old;
+                msg.r = data->r;
+                msg.g = data->g;
+                msg.b = data->b;
+
+                // we paint a pacman
+                if (data->character == 1) {
+                    paint_pacman(x_character, y_character, rgb_r, rgb_g, rgb_b);
+                    printf("move pacman x-%d y-%d\n", x_character, y_character);
+                }
+                // we paint a superpacman
+                if (data->character == 2) {
+                    paint_powerpacman(x_character, y_character, rgb_r, rgb_g, rgb_b);
+                    printf("move pacman x-%d y-%d\n", x_character, y_character);
+                }
+                if (data->character == 3) {
+                    //we paint a monster
+                    paint_monster(x_character, y_character, rgb_r, rgb_g, rgb_b);
+                    printf("move monster x-%d y-%d\n", x_character, y_character);
+                }
+
+                //SYNC MECHANISM
+                IDList *aux = Clients;
+                while (aux != NULL) {
+                    send(aux->socket, &msg, sizeof(msg), 0);
+                    aux = aux->next;
+                }
+            }
+            //*********************************//
+            //*********************************//
+            //*********************************//
+            if (event.type == Event_Change2Characters) {
+
+                // we get the data (created with the malloc)
+                Event_Change2Characters_Data *data = event.user.data1;
+                //printf("ola2 dvsf %d %d %d \n", data->character1,data->x1,data->y1);
+
+                clear_place(data->x1_old, data->y1_old);
+                if (data->character1 == 1) {
+                    paint_pacman(data->x1, data->y1, data->r1, data->g1, data->b1);
+                } else if (data->character1 == 2) {
+                    paint_powerpacman(data->x1, data->y1, data->r1, data->g1, data->b1);
+                } else if (data->character1 == 3) {
+                    paint_monster(data->x1, data->y1, data->r1, data->g1, data->b1);
+                }
+                //printf("ola2 dvsf %d %d  %d\n", data->character2,data->x2,data->y2);
+                if (data->character2 == 1) {
+                    paint_pacman(data->x2, data->y2, data->r2, data->g2, data->b2);
+                } else if (data->character2 == 2) {
+                    paint_powerpacman(data->x2, data->y2, data->r2, data->g2, data->b2);
+                } else if (data->character2 == 3) {
+                    paint_monster(data->x2, data->y2, data->r2, data->g2, data->b2);
+                }
+
+                //send to all clients
+            }
+
+            if (event.type == Event_Disconnect) {
+                character_mov_msg msg;
+                // we get the data (created with the malloc)
+                Event_Disconnect_Data *data = event.user.data1;
+
+
+                msg.character = -1;
+                msg.x = data->xm;
+                msg.y = data->ym;
+                msg.x_old = data->xp;
+                msg.y_old = data->yp;
+
+                clear_place(data->xm, data->ym);
+                clear_place(data->xp, data->yp);
+                printf("clear -%d y-%d\n", data->xm, data->ym);
+                printf("clear -%d y-%d\n", data->xp, data->yp);
+
+                //SYNC MECHANISM
+                IDList *aux = Clients;
+                while (aux != NULL) {
+                    printf("send+\n");
+                    send(aux->socket, &msg, sizeof(msg), 0);
+                    aux = aux->next;
+                }
+            }
+
+            if (event.type == Event_ShowFruit) {
+                character_mov_msg msg;
+                // we get the data (created with the malloc)
+                Event_ShowFruit_Data *data = event.user.data1;
+
+                if(data->fruit==4) {
+                    msg.character =4;
+                    paint_cherry(data->x,data->y);
+
+                }
+                else if(data->fruit==5) {
+                    msg.character =5;
+                    paint_lemon(data->x,data->y);
+                }
+                msg.x = data->x;
+                msg.y = data->y;
+                printf("fruit in x-%d y-%d %d\n", data->x, data->y,data->fruit);
+
+                for (i = 0; i < n_lines + 1; i++) {
+                    printf("%2d ", i);
+                    for (j = 0; j < n_cols + 1; j++) {
+                        printf("%d", board[i][j]);
+                    }
+                    printf("\n");
+                }
+                //SYNC MECHANISM
+                //IDList *aux = Clients;
+                //while (aux != NULL) {
+                //    printf("send+\n");
+                //    send(aux->socket, &msg, sizeof(msg), 0);
+                //    aux = aux->next;
+                //}
+            }
+
+            if (event.type == Event_ShownewFruits) {
+                //character_mov_msg msg;
+                // we get the data (created with the malloc)
+                Event_ShownewFruits_Data *data = event.user.data1;
+                paint_cherry(data->x1,data->y1);
+                paint_lemon(data->x2,data->y2);
+                printf("fruit in -%d y-%d\n", data->x1, data->y2);
+                printf("fruit in -%d y-%d\n", data->x2, data->y2);
+
+                //SYNC MECHANISM
+                //IDList *aux = Clients;
+                //while (aux != NULL) {
+                //    printf("send+\n");
+                //    send(aux->socket, &msg, sizeof(msg), 0);
+                //    aux = aux->next;
+                //}
+            }
+
+            if (event.type == Event_Clean2Fruits) {
+                //character_mov_msg msg;
+                // we get the data (created with the malloc)
+                Event_Clean2Fruits_Data *data = event.user.data1;
+                clear_place(data->x1,data->y1);
+                clear_place(data->x2,data->y2);
+                printf("clean fruit in -%d y-%d\n", data->x1, data->y2);
+                printf("clean fruit in -%d y-%d\n", data->x2, data->y2);
+
+                //SYNC MECHANISM
+                //IDList *aux = Clients;
+                //while (aux != NULL) {
+                //    printf("send+\n");
+                //    send(aux->socket, &msg, sizeof(msg), 0);
+                //    aux = aux->next;
+                //}
+            }
+
+
+
+            if (event.type == Event_Inactivity) {
+                character_mov_msg msg;
+                // we get the data (created with the malloc)
+                Event_Inactivity_Data *data = event.user.data1;
+                clear_place(data->x_old, data->y_old);
+
 
                 x_character = data->x;
                 y_character = data->y;
@@ -841,7 +2280,7 @@ int main(int argc , char* argv[]){
 
 
                 msg.character = data->character;
-                printf("%d\n",data->character);
+                printf("%d\n", data->character);
                 msg.x = x_character;
                 msg.y = y_character;
                 msg.x_old = data->x_old;
@@ -852,92 +2291,27 @@ int main(int argc , char* argv[]){
 
 
                 // we paint a pacman
-                if(data->character==1) {
+                if (data->character == 1) {
                     paint_pacman(x_character, y_character, rgb_r, rgb_g, rgb_b);
                     printf("move pacman x-%d y-%d\n", x_character, y_character);
-
-                    //SYNC MECHANISM
-                    IDList *aux = Clients;
-
-                    while(aux != NULL){
-                        send(aux->socket, &msg, sizeof(msg), 0);
-                        aux = aux->next;
-
-                    }
                 }
-                // we paint a superpacman
-                if(data->character==2) {
-                    paint_powerpacman(x_character, y_character, rgb_r, rgb_g, rgb_b);
-                    printf("move pacman x-%d y-%d\n", x_character, y_character);
-
-                    //SYNC MECHANISM
-                    IDList *aux = Clients;
-
-                    while(aux != NULL){
-                        send(aux->socket, &msg, sizeof(msg), 0);
-                        aux = aux->next;
-                    }
-
+                if (data->character == 2) {
+                    paint_pacman(x_character, y_character, rgb_r, rgb_g, rgb_b);
+                    printf("move super pacman x-%d y-%d\n", x_character, y_character);
                 }
-                if(data->character==3) {
-                    //we paint a monster
+                if (data->character == 3) {
                     paint_monster(x_character, y_character, rgb_r, rgb_g, rgb_b);
                     printf("move monster x-%d y-%d\n", x_character, y_character);
-
-                    //SYNC MECHANISM
-                    IDList *aux = Clients;
-
-                    while(aux != NULL){
-                        send(aux->socket, &msg, sizeof(msg), 0);
-                        aux = aux->next;
-                    }
                 }
-                if(data->character==-1) {
-                    clear_place(x_character,y_character);
 
-                    printf("clear -%d y-%d\n", x_character, y_character);
-                    printf("clear -%d y-%d\n", data->x_old, data->y_old);
+                //SYNC MECHANISM
+                IDList *aux = Clients;
 
-                    //SYNC MECHANISM
-                    IDList *aux = Clients;
-
-                    while(aux != NULL){
-                        printf("send+\n");
-                        send(aux->socket, &msg, sizeof(msg), 0);
-                        aux = aux->next;
-
-                    }
+                while (aux != NULL) {
+                    send(aux->socket, &msg, sizeof(msg), 0);
+                    aux = aux->next;
                 }
             }
-
-            //*********************************//
-            //*********************************//
-            //*********************************//
-            if (event.type == Event_Change2Characters) {
-
-                // we get the data (created with the malloc)
-                Event_Change2Characters_Data *data = event.user.data1;
-                if(data->character1==1){
-                    paint_pacman(data->x1,data->y1,data->r1,data->g1,data->b1);
-                }
-                else if(data->character1==2){
-                    paint_powerpacman(data->x1,data->y1,data->r1,data->g1,data->b1);
-                }
-                else if(data->character1==3){
-                    paint_monster(data->x1,data->y1,data->r1,data->g1,data->b1);
-                }
-                printf("ola %d\n",data->character2);
-                if(data->character2==1){
-                    paint_pacman(data->x2,data->y2,data->r2,data->g2,data->b2);
-                }
-                else if(data->character2==2){
-                    paint_powerpacman(data->x2,data->y2,data->r2,data->g2,data->b2);
-                }
-                else if(data->character2==3){
-                    paint_monster(data->x2,data->y2,data->r2,data->g2,data->b2);
-                }
-            }
-
         }
     }
 
