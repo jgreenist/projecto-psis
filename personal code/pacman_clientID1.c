@@ -223,9 +223,9 @@ int main(int argc, char* argv[]){
     // check if all the information was received
 
 
-    int *board= (int *)malloc(sizeof(int)*((n_col+1)*(n_lin+1)));
+    int *board= (int *)malloc(sizeof(int)*((n_col)*(n_lin)));
 
-    int read_size=recv(sock_fd, board, ((n_lin+1)*(n_col+1))*sizeof(int),0);
+    int read_size=recv(sock_fd, board, ((n_lin)*(n_col))*sizeof(int),0);
     if (read_size<0){
         perror("Error in reading: ");
         exit(-1);
@@ -238,10 +238,10 @@ int main(int argc, char* argv[]){
     //    curr_read=recv(sock_fd, &board+read_size, (((n_lin+1)*(n_col+1))*sizeof(int))-read_size,0);
     //    read_size=curr_read+read_size;
     //}
-    for ( i = 0 ; i < n_lin+1; i++){
+    for ( i = 0 ; i < n_lin; i++){
         printf("%d ", i);
-        for ( j = 0 ; j < n_col+1; j++) {
-            printf("%d", *(board+i*(n_col+1)+j));
+        for ( j = 0 ; j < n_col; j++) {
+            printf("%d", *(board+i*(n_col)+j));
         }
         printf("\n");
     }
@@ -271,8 +271,8 @@ int main(int argc, char* argv[]){
     if(size==0){
         //paint pacman monsters and bricks
         for ( i = 0 ; i < n_lin+1; i++){
-            for (j = 0; j < n_col+1; j++){
-                if(board[i*(n_col+1)+j]==1){
+            for (j = 0; j < n_col; j++){
+                if(board[i*(n_col)+j]==1){
                     paint_brick(j, i);
                 }
             }
@@ -281,20 +281,20 @@ int main(int argc, char* argv[]){
     int k;
     if(size>0){
     //paint pacman monsters and bricks
-        for ( i = 0 ; i < n_lin+1; i++){
-            for (j = 0; j < n_col+1; j++){
-                if(board[i*(n_col+1)+j]==1){
+        for ( i = 0 ; i < n_lin; i++){
+            for (j = 0; j < n_col; j++){
+                if(board[i*(n_col)+j]==1){
                     paint_brick(j, i);
-                }else if(board[i*(n_col+1)+j]>10){
+                }else if(board[i*(n_col)+j]>10){
                     for (k=0;k< size;k++){
-                        if (board[i*(n_col+1)+j]==received_list_array[k*4]+10){
+                        if (board[i*(n_col)+j]==received_list_array[k*4]+10){
                             paint_pacman(j, i,received_list_array[k*4+1],received_list_array[k*4+2],received_list_array[k*4+3]);
                         }
                     }
 
-                }else if (board[i*(n_col+1)+j]<-10){
+                }else if (board[i*(n_col)+j]<-10){
                     for (k = 0; k < size; k++) {
-                        if (board[i*(n_col+1)+j] == -(received_list_array[k * 4] + 10)) {
+                        if (board[i*(n_col)+j] == -(received_list_array[k * 4] + 10)) {
                             paint_monster(j, i, received_list_array[k * 4 + 1], received_list_array[k * 4 + 2],
                                           received_list_array[k * 4 + 3]);
                         }
