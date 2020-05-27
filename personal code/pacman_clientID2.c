@@ -246,6 +246,7 @@ int pacman_gamescore_data(int sock_fd){
 int sock_fd;
 int ID;
 void * socketThread(void * arg){
+    int i;
 
     SDL_Event new_event;
     Event_ShowCharacter_Data * event_data;
@@ -433,9 +434,24 @@ void * socketThread(void * arg){
 
         }else if(m.action==8){
 
-            printf("--------------the score--------------\n");
+            printf("\n\n");
+            printf("------------------score--------------------\n");
+            score_msg = (int *)malloc(m.size);
+            err_rcv = recv(sock_fd, score_msg, m.size, 0);
 
+            for(i=0;i<m.size/8;i++){
 
+                if(score_msg[i*2]==ID){
+
+                    printf("-------------------------------------------\n");
+                    printf("---------------YOUR SCORE------------------\n");
+                    printf("         Player ID: %d, score: %d\n",score_msg[i*2],score_msg[i*2+1]);
+                    printf("-------------------------------------------\n");
+                }else{
+                    printf("Player ID: %d, score: %d\n",score_msg[i*2],score_msg[i*2+1]);
+                }
+            }
+            printf("\n\n");
         }else {
             continue;
         }

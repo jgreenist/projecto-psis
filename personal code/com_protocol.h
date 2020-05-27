@@ -23,6 +23,7 @@ typedef struct initialinfo_msg{
 
 int * send_board;
 int * send_list_array;
+int * score_msg;
 
 //rec is viewed as the client side(server to client)
 //send is also viewed as the client side (client to server)

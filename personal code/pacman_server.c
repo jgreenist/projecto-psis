@@ -2267,6 +2267,18 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
                     validity_move.new_x1 = n_cols - 2;
                     validity_move.new_y1 = y_new;
                     validity_move.valid = 1;
+                }else if (board[y_new][n_cols - 2] == (ID + 10+1)) {
+                    //the pacman of the same player
+
+                    board[y_old][x_old] = board[y_new][n_cols - 2];
+                    board[y_new][n_cols - 2] = -(ID + 10);
+                    validity_move.flag2player = 2;
+                    validity_move.character2 = 2;
+                    validity_move.new_x2 = x_old;
+                    validity_move.new_y2 = y_old;
+                    validity_move.new_x1 = n_cols - 2;
+                    validity_move.new_y1 = y_new;
+                    validity_move.valid = 1;
                 }else if (board[y_new][n_cols - 2] >10) {
                     if(board[y_new][n_cols - 2]%2==0){
                         ID_other = board[y_new][n_cols - 2]-10-1;
@@ -2380,6 +2392,18 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
                     board[y_new][1] = -(ID + 10);
                     validity_move.flag2player = 2;
                     validity_move.character2 = 1;
+                    validity_move.new_x2 = x_old;
+                    validity_move.new_y2 = y_old;
+                    validity_move.new_x1 = 1;
+                    validity_move.new_y1 = y_new;
+                    validity_move.valid = 1;
+                } else if (board[y_new][1] == (ID + 10+1)) {
+                    //the pacman of the same player
+
+                    board[y_old][x_old] = board[y_new][1];
+                    board[y_new][1] = -(ID + 10);
+                    validity_move.flag2player = 2;
+                    validity_move.character2 = 2;
                     validity_move.new_x2 = x_old;
                     validity_move.new_y2 = y_old;
                     validity_move.new_x1 = 1;
@@ -2499,6 +2523,18 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
                     board[n_lines - 2][x_new] = -(ID + 10);
                     validity_move.flag2player = 2;
                     validity_move.character2 = 1;
+                    validity_move.new_x2 = x_old;
+                    validity_move.new_y2 = y_old;
+                    validity_move.new_x1 = x_new;
+                    validity_move.new_y1 = n_lines - 2;
+                    validity_move.valid = 1;
+                }else if (board[n_lines - 2][x_new] == (ID + 10+1)) {
+                    //the pacman of the same player
+
+                    board[y_old][x_old] = board[n_lines - 2][x_new];
+                    board[n_lines - 2][x_new] = -(ID + 10);
+                    validity_move.flag2player = 2;
+                    validity_move.character2 = 2;
                     validity_move.new_x2 = x_old;
                     validity_move.new_y2 = y_old;
                     validity_move.new_x1 = x_new;
@@ -2624,6 +2660,18 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
                     validity_move.new_x1 = x_new;
                     validity_move.new_y1 = 1;
                     validity_move.valid = 1;
+                }else if (board[1][x_new] == (ID + 10+1)) {
+                    //the pacman of the same player
+
+                    board[y_old][x_old] = board[1][x_new];
+                    board[1][x_new] = -(ID + 10);
+                    validity_move.flag2player = 2;
+                    validity_move.character2 = 2;
+                    validity_move.new_x2 = x_old;
+                    validity_move.new_y2 = y_old;
+                    validity_move.new_x1 = x_new;
+                    validity_move.new_y1 = 1;
+                    validity_move.valid = 1;
                 }else if (board[1][x_new] >10) {
                     if(board[1][x_new]%2==0){
                         ID_other = board[1][x_new]-10-1;
@@ -2727,6 +2775,17 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
                 board[y_new][x_new] = -(ID + 10);
                 validity_move.flag2player = 2;
                 validity_move.character2 = 1;
+                validity_move.new_x2 = x_old;
+                validity_move.new_y2 = y_old;
+                validity_move.new_x1 = x_new;
+                validity_move.new_y1 = y_new;
+                validity_move.valid = 1;
+            }else if (board[y_new][x_new] == (ID + 10+1)) {
+                //the pacman of the same player
+                board[y_old][x_old] = board[y_new][x_new];
+                board[y_new][x_new] = -(ID + 10);
+                validity_move.flag2player = 2;
+                validity_move.character2 = 2;
                 validity_move.new_x2 = x_old;
                 validity_move.new_y2 = y_old;
                 validity_move.new_x1 = x_new;
@@ -2839,6 +2898,18 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
                                 board[y_new][x_new-2] = -(ID + 10);
                                 validity_move.flag2player = 2;
                                 validity_move.character2 = 1;
+                                validity_move.new_x2 = x_old;
+                                validity_move.new_y2 = y_old;
+                                validity_move.new_x1 = x_new-2;
+                                validity_move.new_y1 = y_new;
+                                validity_move.valid = 1;
+                            }else if (board[y_new][x_new-2] == (ID + 10+1)) {
+                                //the pacman of the same player
+
+                                board[y_old][x_old] = board[y_new][x_new-2];
+                                board[y_new][x_new-2] = -(ID + 10);
+                                validity_move.flag2player = 2;
+                                validity_move.character2 = 2;
                                 validity_move.new_x2 = x_old;
                                 validity_move.new_y2 = y_old;
                                 validity_move.new_x1 = x_new-2;
@@ -2966,6 +3037,18 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
                                 board[y_new][x_new+2] = -(ID + 10);
                                 validity_move.flag2player = 2;
                                 validity_move.character2 = 1;
+                                validity_move.new_x2 = x_old;
+                                validity_move.new_y2 = y_old;
+                                validity_move.new_x1 = x_new+2;
+                                validity_move.new_y1 = y_new;
+                                validity_move.valid = 1;
+                            }else if (board[y_new][x_new+2] == (ID + 10+1)) {
+                                //the pacman of the same player
+
+                                board[y_old][x_old] = board[y_new][x_new+2];
+                                board[y_new][x_new+2] = -(ID + 10);
+                                validity_move.flag2player = 2;
+                                validity_move.character2 = 2;
                                 validity_move.new_x2 = x_old;
                                 validity_move.new_y2 = y_old;
                                 validity_move.new_x1 = x_new+2;
@@ -3105,6 +3188,18 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
                                 validity_move.new_x1 = x_new;
                                 validity_move.new_y1 = y_new-2;
                                 validity_move.valid = 1;
+                            }else if (board[y_new-2][x_new] == (ID + 10+1)) {
+                                //the pacman of the same player
+
+                                board[y_old][x_old] = board[y_new-2][x_new];
+                                board[y_new-2][x_new] = -(ID + 10);
+                                validity_move.flag2player = 2;
+                                validity_move.character2 = 2;
+                                validity_move.new_x2 = x_old;
+                                validity_move.new_y2 = y_old;
+                                validity_move.new_x1 = x_new;
+                                validity_move.new_y1 = y_new-2;
+                                validity_move.valid = 1;
                             }else if (board[y_new-2][x_new] >10) {
                                 if(board[y_new-2][x_new]%2==0){
                                     ID_other = board[y_new-2][x_new]-10-1;
@@ -3226,6 +3321,18 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
                                 board[y_new+2][x_new] = -(ID + 10);
                                 validity_move.flag2player = 2;
                                 validity_move.character2 = 1;
+                                validity_move.new_x2 = x_old;
+                                validity_move.new_y2 = y_old;
+                                validity_move.new_x1 = x_new;
+                                validity_move.new_y1 = y_new+2;
+                                validity_move.valid = 1;
+                            }else if (board[y_new+2][x_new] == (ID + 10+1)) {
+                                //the pacman of the same player
+
+                                board[y_old][x_old] = board[y_new+2][x_new];
+                                board[y_new+2][x_new] = -(ID + 10);
+                                validity_move.flag2player = 2;
+                                validity_move.character2 = 2;
                                 validity_move.new_x2 = x_old;
                                 validity_move.new_y2 = y_old;
                                 validity_move.new_x1 = x_new;
@@ -4220,22 +4327,54 @@ void * thread_Accept(void * argc){
 
 void * send_scores(void * argc){
     IDList *aux;
+    IDList * aux2;
+    int size=0,i;
+    score_msg=malloc(sizeof(int)*2);
+    message m;
+    m.action=8;
+
+
+
     while(1){
 
-        sleep(60);
+
+        sleep(2);
 
         if(Clients==NULL){
             continue;
+
         }else{
+
             if(Clients->next==NULL){
+
                 Clients->score=0;
                 printf("Client ID: %d score: %d \n\n", Clients->ID, Clients->score);
             } else {
-                aux=Clients;
-                while (aux != NULL) {
 
-                    printf("Client ID: %d score: %d \n\n", aux->ID, aux->score);
+                aux=Clients;
+                aux2=Clients;
+                size=0;
+                while (aux != NULL) {
+                    size++;
                     aux = get_next_ID(aux);
+                }
+                m.size= sizeof(int)*2*size;
+                score_msg=realloc(score_msg,m.size);
+                aux=aux2;
+                i=0;
+                while (aux != NULL) {
+                    score_msg[i*2]=aux->ID;
+                    score_msg[i*2+1]=aux->score;
+                    i++;
+                    aux = get_next_ID(aux);
+                }
+                aux=aux2;
+                while (aux != NULL) {
+                    printf("Client ID: %d score: %d \n", aux->ID, aux->score);
+                    send(aux->socket, &m, sizeof(message),0);
+                    send(aux->socket, score_msg, m.size, 0);
+                    aux = aux->next;
+
                 }
             }
         }

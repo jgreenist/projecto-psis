@@ -32,6 +32,7 @@
     <list default="true" id="75d47b6e-bacf-4b24-8d11-b92d5b17b0a0" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/personal code/com_protocol.h" beforeDir="false" afterPath="$PROJECT_DIR$/personal code/com_protocol.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/personal code/pacman_clientID2" beforeDir="false" afterPath="$PROJECT_DIR$/personal code/pacman_clientID2" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/personal code/pacman_clientID2.c" beforeDir="false" afterPath="$PROJECT_DIR$/personal code/pacman_clientID2.c" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/personal code/pacman_server" beforeDir="false" afterPath="$PROJECT_DIR$/personal code/pacman_server" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/personal code/pacman_server.c" beforeDir="false" afterPath="$PROJECT_DIR$/personal code/pacman_server.c" afterDir="false" />
@@ -56,52 +57,28 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/psis_grupo_15_joao_ornelas_tiago_almeida/PSis_Grupo15_Joao_Ornelas_Tiago_Almeida/library.c">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="60">
+            <state relative-caret-position="2760">
               <caret line="184" column="11" selection-start-line="184" selection-start-column="11" selection-end-line="184" selection-end-column="11" />
             </state>
           </provider>
         </entry>
       </file>
-      <file pinned="false" current-in-tab="false">
+      <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/personal code/pacman_clientID2.c">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="-225">
-              <caret line="389" column="31" selection-start-line="389" selection-start-column="31" selection-end-line="389" selection-end-column="31" />
-              <folding>
-                <element signature="e#174#199#0" expanded="true" />
-                <element signature="e#3752#8867#0" />
-                <element signature="e#8231#12708#0" />
-                <element signature="e#8501#8882#0" />
-                <element signature="e#8503#8738#0" />
-                <element signature="e#8610#8659#0" />
-              </folding>
+            <state relative-caret-position="713">
+              <caret line="453" column="11" lean-forward="true" selection-start-line="453" selection-start-column="11" selection-end-line="453" selection-end-column="27" />
             </state>
           </provider>
         </entry>
       </file>
-      <file pinned="false" current-in-tab="true">
+      <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/personal code/pacman_server.c">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="443">
-              <caret line="4235" selection-start-line="4235" selection-end-line="4235" />
+            <state relative-caret-position="555">
+              <caret line="2275" column="48" selection-start-line="2275" selection-start-column="48" selection-end-line="2275" selection-end-column="48" />
               <folding>
                 <element signature="e#256#281#0" expanded="true" />
-                <element signature="e#1037#1112#0" />
-                <element signature="e#1148#1261#0" />
-                <element signature="e#1301#1373#0" />
-                <element signature="e#1412#1484#0" />
-                <element signature="e#1517#1569#0" />
-                <element signature="e#1602#1651#0" />
-                <element signature="e#1683#1738#0" />
-                <element signature="e#1774#1828#0" />
-                <element signature="e#2046#2304#0" />
-                <element signature="e#2559#5754#0" />
-                <element signature="e#5946#6816#0" />
-                <element signature="e#7015#7298#0" />
-                <element signature="e#7311#150665#0" />
-                <element signature="e#150859#187403#0" />
-                <element signature="e#186445#187164#0" />
-                <element signature="e#187917#201393#0" />
               </folding>
             </state>
           </provider>
@@ -110,8 +87,8 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/personal code/com_protocol.h">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="540">
-              <caret line="57" column="11" selection-start-line="57" selection-start-column="8" selection-end-line="57" selection-end-column="11" />
+            <state relative-caret-position="375">
+              <caret line="25" column="16" selection-start-line="25" selection-start-column="16" selection-end-line="25" selection-end-column="16" />
             </state>
           </provider>
         </entry>
@@ -230,15 +207,17 @@
       <workItem from="1590321071106" duration="14594000" />
       <workItem from="1590341155433" duration="1443000" />
       <workItem from="1590410753198" duration="19590000" />
-      <workItem from="1590499360773" duration="44668000" />
+      <workItem from="1590499360773" duration="45268000" />
+      <workItem from="1590610293474" duration="5684000" />
     </task>
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="387424000" />
+    <option name="totallyTimeSpent" value="393708000" />
   </component>
   <component name="ToolWindowManager">
     <frame x="992" y="24" width="928" height="1056" extended-state="4" />
+    <editor active="true" />
     <layout>
       <window_info content_ui="combo" id="Project" order="0" weight="0.034013607" />
       <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
@@ -317,24 +296,10 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/personal code/list_ID.c">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="2925">
-          <caret line="195" column="26" selection-start-line="195" selection-start-column="26" selection-end-line="195" selection-end-column="26" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/psis_grupo_15_joao_ornelas_tiago_almeida/PSis_Grupo15_Joao_Ornelas_Tiago_Almeida/clipboard.c">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="8492">
           <caret line="765" column="27" selection-start-line="765" selection-start-column="27" selection-end-line="765" selection-end-column="27" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/psis_grupo_15_joao_ornelas_tiago_almeida/PSis_Grupo15_Joao_Ornelas_Tiago_Almeida/library.c">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="60">
-          <caret line="184" column="11" selection-start-line="184" selection-start-column="11" selection-end-line="184" selection-end-column="11" />
         </state>
       </provider>
     </entry>
@@ -345,54 +310,44 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/personal code/list_ID.c">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="2925">
+          <caret line="195" column="26" selection-start-line="195" selection-start-column="26" selection-end-line="195" selection-end-column="26" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/psis_grupo_15_joao_ornelas_tiago_almeida/PSis_Grupo15_Joao_Ornelas_Tiago_Almeida/library.c">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="2760">
+          <caret line="184" column="11" selection-start-line="184" selection-start-column="11" selection-end-line="184" selection-end-column="11" />
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/personal code/com_protocol.c">
       <provider selected="true" editor-type-id="text-editor" />
     </entry>
     <entry file="file://$PROJECT_DIR$/personal code/com_protocol.h">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="540">
-          <caret line="57" column="11" selection-start-line="57" selection-start-column="8" selection-end-line="57" selection-end-column="11" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/personal code/pacman_clientID2.c">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-225">
-          <caret line="389" column="31" selection-start-line="389" selection-start-column="31" selection-end-line="389" selection-end-column="31" />
-          <folding>
-            <element signature="e#174#199#0" expanded="true" />
-            <element signature="e#3752#8867#0" />
-            <element signature="e#8231#12708#0" />
-            <element signature="e#8501#8882#0" />
-            <element signature="e#8503#8738#0" />
-            <element signature="e#8610#8659#0" />
-          </folding>
+        <state relative-caret-position="375">
+          <caret line="25" column="16" selection-start-line="25" selection-start-column="16" selection-end-line="25" selection-end-column="16" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/personal code/pacman_server.c">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="443">
-          <caret line="4235" selection-start-line="4235" selection-end-line="4235" />
+        <state relative-caret-position="555">
+          <caret line="2275" column="48" selection-start-line="2275" selection-start-column="48" selection-end-line="2275" selection-end-column="48" />
           <folding>
             <element signature="e#256#281#0" expanded="true" />
-            <element signature="e#1037#1112#0" />
-            <element signature="e#1148#1261#0" />
-            <element signature="e#1301#1373#0" />
-            <element signature="e#1412#1484#0" />
-            <element signature="e#1517#1569#0" />
-            <element signature="e#1602#1651#0" />
-            <element signature="e#1683#1738#0" />
-            <element signature="e#1774#1828#0" />
-            <element signature="e#2046#2304#0" />
-            <element signature="e#2559#5754#0" />
-            <element signature="e#5946#6816#0" />
-            <element signature="e#7015#7298#0" />
-            <element signature="e#7311#150665#0" />
-            <element signature="e#150859#187403#0" />
-            <element signature="e#186445#187164#0" />
-            <element signature="e#187917#201393#0" />
           </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/personal code/pacman_clientID2.c">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="713">
+          <caret line="453" column="11" lean-forward="true" selection-start-line="453" selection-start-column="11" selection-end-line="453" selection-end-column="27" />
         </state>
       </provider>
     </entry>
