@@ -37,19 +37,19 @@ Uint32 Event_Clean2Fruits;
 //Thread responsible for receiving messages from each player//
 //----------------and deal with initial protocol------------//
 typedef struct Event_ShowCharacter_Data{
-    int character,x,y,x_old,y_old,r,g,b;
+    int character,ID,x,y,x_old,y_old,r,g,b;
 } Event_ShowCharacter_Data;
 
 typedef struct Event_Change2Characters_Data{
-    int character1,x1_old,y1_old,x1,y1,character2,x2,y2,r1,g1,b1,r2,g2,b2;
+    int character1,ID1,x1_old,y1_old,x1,y1,character2,ID2,x2,y2,r1,g1,b1,r2,g2,b2;
 } Event_Change2Characters_Data;
 
 typedef struct Event_ShownewCharacter_Data{
-    int xp,yp,xm,ym,r,g,b,sock_fd;
+    int ID,xp,yp,xm,ym,r,g,b,sock_fd;
 } Event_ShownewCharacter_Data;
 
 typedef struct Event_Inactivity_Data{
-    int character,x,y,x_old,y_old,r,g,b;
+    int character,ID,x,y,x_old,y_old,r,g,b;
 } Event_Inactivity_Data;
 
 typedef struct Event_Disconnect_Data{
@@ -223,7 +223,7 @@ typedef struct valid_move{
     int flag_newfruit; //0 or 1
     int character1,character2,new_x1,new_y1,new_x2,new_y2;
     int other_rgb_r,other_rgb_g,other_rgb_b;
-
+    int other_ID;
 }valid_move;
 
 valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old, int character, int ID, int superpower) {
@@ -240,6 +240,7 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
     validity_move.other_rgb_r = 0;
     validity_move.other_rgb_b = 0;
     validity_move.other_rgb_b = 0;
+    validity_move.other_ID = 0;
 
 
 
@@ -258,8 +259,8 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
                     validity_move.new_x1 = n_cols - 2;
                     validity_move.new_y1 = y_new;
 
-                    board[y_new][n_cols - 2] = 10 + ID;
                     board[y_old][x_old]=0;
+                    board[y_new][n_cols - 2] = 10 + ID;
                     validity_move.valid = 1;
                 } else if (board[y_new][n_cols - 2] == 4){
                     board[y_new][n_cols - 2] = 10 + ID+1;
@@ -283,11 +284,13 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
                     board[y_old][x_old] = board[y_new][n_cols - 2];
                     board[y_new][n_cols - 2] = 10 + ID;
 
+
                     validity_move.flag2player = 1;
                     validity_move.new_x2 = x_old;
                     validity_move.new_y2 = y_old;
                     if (ID_other % 2 == 0) {
                         validity_move.character2 = 2;
+                        validity_move.other_ID=ID_other-1;
 
                         other_list = get_IDlist(Clients, ID_other - 1);
                         other_list->xp=x_old;
@@ -295,6 +298,7 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
 
                     } else {
                         validity_move.character2 = 1;
+                        validity_move.other_ID=ID_other;
 
                         other_list = get_IDlist(Clients, ID_other);
                         other_list->xp=x_old;
@@ -338,10 +342,10 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
 
                 }else {
                     validity_move.new_x1 = x_old;
-                    validity_move.new_y1 = y_new;
+                    validity_move.new_y1 = y_old;
 
-                    board[validity_move.new_y1][validity_move.new_x1]=(ID+10);
                     board[y_old][x_old]=0;
+                    board[validity_move.new_y1][validity_move.new_x1]=(ID+10);
                     validity_move.valid = 1;
                 }
             }else if (x_new < 0) {
@@ -380,6 +384,7 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
                     validity_move.new_y2 = y_old;
                     if (ID_other % 2 == 0) {
                         validity_move.character2 = 2;
+                        validity_move.other_ID=ID_other-1;
 
                         other_list = get_IDlist(Clients, ID_other - 1);
                         other_list->xp=x_old;
@@ -387,6 +392,7 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
 
                     } else {
                         validity_move.character2 = 1;
+                        validity_move.other_ID=ID_other;
 
                         other_list = get_IDlist(Clients, ID_other);
                         other_list->xp=x_old;
@@ -430,10 +436,10 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
 
                 }else {
                     validity_move.new_x1 = x_old;
-                    validity_move.new_y1 = y_new;
+                    validity_move.new_y1 = y_old;
+                    board[y_old][x_old] = 0;
 
                     board[validity_move.new_y1][validity_move.new_x1] = (ID + 10);
-                    board[y_old][x_old] = 0;
                     validity_move.valid = 1;
 
                 }
@@ -474,6 +480,7 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
                     validity_move.new_y2 = y_old;
                     if (ID_other % 2 == 0) {
                         validity_move.character2 = 2;
+                        validity_move.other_ID=ID_other-1;
 
                         other_list = get_IDlist(Clients, ID_other - 1);
                         other_list->xp=x_old;
@@ -481,6 +488,7 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
 
                     } else {
                         validity_move.character2 = 1;
+                        validity_move.other_ID=ID_other;
 
                         other_list = get_IDlist(Clients, ID_other);
                         other_list->xp=x_old;
@@ -524,10 +532,10 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
 
                 } else {
                     validity_move.new_y1 = y_old;
-                    validity_move.new_x1 = x_new;
+                    validity_move.new_x1 = x_old;
+                    board[y_old][x_old]=0;
 
                     board[validity_move.new_y1][validity_move.new_x1]=(ID+10);
-                    board[y_old][x_old]=0;
                     validity_move.valid = 1;
 
                 }
@@ -568,6 +576,7 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
                     validity_move.new_y2 = y_old;
                     if (ID_other % 2 == 0) {
                         validity_move.character2 = 2;
+                        validity_move.other_ID=ID_other-1;
 
                         other_list = get_IDlist(Clients, ID_other - 1);
                         other_list->xp=x_old;
@@ -575,6 +584,7 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
 
                     } else {
                         validity_move.character2 = 1;
+                        validity_move.other_ID=ID_other;
 
                         other_list = get_IDlist(Clients, ID_other);
                         other_list->xp=x_old;
@@ -618,10 +628,10 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
 
                 }  else {
                     validity_move.new_y1 = y_old;
-                    validity_move.new_x1 = x_new;
+                    validity_move.new_x1 = x_old;
 
-                    board[validity_move.new_y1][validity_move.new_x1]=(ID+10);
                     board[y_old][x_old]=0;
+                    board[validity_move.new_y1][validity_move.new_x1]=(ID+10);
                     validity_move.valid = 1;
                 }
             }else if (board[y_new][x_new] == 4){
@@ -651,6 +661,7 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
                 validity_move.new_y2 = y_old;
                 if (ID_other % 2 == 0) {
                     validity_move.character2 = 2;
+                    validity_move.other_ID=ID_other-1;
 
                     other_list = get_IDlist(Clients, ID_other - 1);
                     other_list->xp=x_old;
@@ -658,6 +669,7 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
 
                 } else {
                     validity_move.character2 = 1;
+                    validity_move.other_ID=ID_other;
 
                     other_list = get_IDlist(Clients, ID_other);
                     other_list->xp=x_old;
@@ -737,6 +749,7 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
                                 validity_move.new_y2 = y_old;
                                 if (ID_other % 2 == 0) {
                                     validity_move.character2 = 2;
+                                    validity_move.other_ID=ID_other-1;
 
                                     other_list = get_IDlist(Clients, ID_other - 1);
                                     other_list->xp=x_old;
@@ -744,6 +757,7 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
 
                                 } else {
                                     validity_move.character2 = 1;
+                                    validity_move.other_ID=ID_other;
 
                                     other_list = get_IDlist(Clients, ID_other);
                                     other_list->xp=x_old;
@@ -838,6 +852,7 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
                                 validity_move.new_y2 = y_old;
                                 if (ID_other % 2 == 0) {
                                     validity_move.character2 = 2;
+                                    validity_move.other_ID=ID_other-1;
 
                                     other_list = get_IDlist(Clients, ID_other - 1);
                                     other_list->xp=x_old;
@@ -845,6 +860,7 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
 
                                 } else {
                                     validity_move.character2 = 1;
+                                    validity_move.other_ID=ID_other;
 
                                     other_list = get_IDlist(Clients, ID_other);
                                     other_list->xp=x_old;
@@ -946,6 +962,7 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
                                 validity_move.new_y2 = y_old;
                                 if (ID_other % 2 == 0) {
                                     validity_move.character2 = 2;
+                                    validity_move.other_ID=ID_other-1;
 
                                     other_list = get_IDlist(Clients, ID_other - 1);
                                     other_list->xp=x_old;
@@ -953,6 +970,7 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
 
                                 } else {
                                     validity_move.character2 = 1;
+                                    validity_move.other_ID=ID_other;
 
                                     other_list = get_IDlist(Clients, ID_other);
                                     other_list->xp=x_old;
@@ -1048,6 +1066,7 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
                                 validity_move.new_y2 = y_old;
                                 if (ID_other % 2 == 0) {
                                     validity_move.character2 = 2;
+                                    validity_move.other_ID=ID_other-1;
 
                                     other_list = get_IDlist(Clients, ID_other - 1);
                                     other_list->xp=x_old;
@@ -1055,6 +1074,7 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
 
                                 } else {
                                     validity_move.character2 = 1;
+                                    validity_move.other_ID=ID_other;
 
                                     other_list = get_IDlist(Clients, ID_other);
                                     other_list->xp=x_old;
@@ -1174,6 +1194,7 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
                     validity_move.new_y2 = y_old;
                     if (ID_other % 2 == 0) {
                         validity_move.character2 = 2;
+                        validity_move.other_ID=ID_other-1;
 
                         other_list = get_IDlist(Clients, ID_other - 1);
                         other_list->xp=x_old;
@@ -1181,6 +1202,7 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
 
                     } else {
                         validity_move.character2 = 1;
+                        validity_move.other_ID=ID_other;
 
                         other_list = get_IDlist(Clients, ID_other);
                         other_list->xp=x_old;
@@ -1223,6 +1245,7 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
                     other_list->xm = elem % n_cols;
                     other_list->ym = elem / n_cols;
 
+                    validity_move.other_ID=ID_other;
                     validity_move.other_rgb_r = other_list->rgb_r;
                     validity_move.other_rgb_g = other_list->rgb_g;
                     validity_move.other_rgb_b = other_list->rgb_b;
@@ -1233,10 +1256,10 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
 
                 } else {
                     validity_move.new_x1 = x_old;
-                    validity_move.new_y1 = y_new;
+                    validity_move.new_y1 = y_old;
+                    board[y_old][x_old]=0;
 
                     board[validity_move.new_y1][validity_move.new_x1]=(ID+10)+1;
-                    board[y_old][x_old]=0;
                     validity_move.valid = 1;
                 }
             }else if (x_new < 0) {
@@ -1283,6 +1306,7 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
                     validity_move.new_y2 = y_old;
                     if (ID_other % 2 == 0) {
                         validity_move.character2 = 2;
+                        validity_move.other_ID=ID_other-1;
 
                         other_list = get_IDlist(Clients, ID_other - 1);
                         other_list->xp=x_old;
@@ -1290,6 +1314,7 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
 
                     } else {
                         validity_move.character2 = 1;
+                        validity_move.other_ID=ID_other;
 
                         other_list = get_IDlist(Clients, ID_other);
                         other_list->xp=x_old;
@@ -1335,6 +1360,7 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
                     validity_move.other_rgb_r = other_list->rgb_r;
                     validity_move.other_rgb_g = other_list->rgb_g;
                     validity_move.other_rgb_b = other_list->rgb_b;
+                    validity_move.other_ID=ID_other;
                     validity_move.new_x1 = 1;
                     validity_move.new_y1 = y_new;
                     validity_move.valid = 1;
@@ -1342,10 +1368,10 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
 
                 } else {
                     validity_move.new_x1 = x_old;
-                    validity_move.new_y1 = y_new;
+                    validity_move.new_y1 = y_old;
+                    board[y_old][x_old] = 0;
 
                     board[validity_move.new_y1][validity_move.new_x1] = (ID + 10)+1;
-                    board[y_old][x_old] = 0;
                     validity_move.valid = 1;
 
                 }
@@ -1359,41 +1385,42 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
                     board[y_old][x_old]=0;
                     validity_move.valid = 1;
 
-                } else if (board[n_lines - 1][x_new] == 4){
+                } else if (board[n_lines - 2][x_new] == 4){
                     if(superpower==2){
-                        board[n_lines - 1][x_new] = 10 + ID;
+                        board[n_lines - 2][x_new] = 10 + ID;
                     }else{
-                        board[n_lines - 1][x_new] = 10 + ID+1;
+                        board[n_lines - 2][x_new] = 10 + ID+1;
                     }
                     validity_move.new_x1 = x_new;
-                    validity_move.new_y1 = n_lines - 1;
+                    validity_move.new_y1 = n_lines - 2;
                     board[y_old][x_old]=0;
 
                     validity_move.flag_newfruit = 1;
                     validity_move.valid = 1;
-                }else if (board[n_lines - 1][x_new] == 5){
+                }else if (board[n_lines - 2][x_new] == 5){
                     if(superpower==2){
-                        board[n_lines - 1][x_new] = 10 + ID;
+                        board[n_lines - 2][x_new] = 10 + ID;
                     }else{
-                        board[n_lines - 1][x_new] = 10 + ID+1;
+                        board[n_lines - 2][x_new] = 10 + ID+1;
                     }
                     validity_move.new_x1 = x_new;
-                    validity_move.new_y1 = n_lines - 1;
+                    validity_move.new_y1 = n_lines - 2;
                     board[y_old][x_old]=0;
 
                     validity_move.flag_newfruit = 2;
                     validity_move.valid = 1;
-                }else if (board[n_lines - 1][x_new] > 10) {
+                }else if (board[n_lines - 2][x_new] > 10) {
                     //printf("board[y_new][x_new]:%d\n",board[y_new][x_new]);
-                    ID_other = board[n_lines - 1][x_new] - 10;
-                    board[y_old][x_old] = board[n_lines - 1][x_new];
-                    board[n_lines - 1][x_new] = 10 + ID+1;
+                    ID_other = board[n_lines - 2][x_new] - 10;
+                    board[y_old][x_old] = board[n_lines - 2][x_new];
+                    board[n_lines - 2][x_new] = 10 + ID+1;
 
                     validity_move.flag2player = 1;
                     validity_move.new_x2 = x_old;
                     validity_move.new_y2 = y_old;
                     if (ID_other % 2 == 0) {
                         validity_move.character2 = 2;
+                        validity_move.other_ID=ID_other-1;
 
                         other_list = get_IDlist(Clients, ID_other - 1);
                         other_list->xp=x_old;
@@ -1401,6 +1428,7 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
 
                     } else {
                         validity_move.character2 = 1;
+                        validity_move.other_ID=ID_other;
 
                         other_list = get_IDlist(Clients, ID_other);
                         other_list->xp=x_old;
@@ -1410,27 +1438,27 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
                     validity_move.other_rgb_g = other_list->rgb_g;
                     validity_move.other_rgb_b = other_list->rgb_b;
                     validity_move.new_x1 = x_new;
-                    validity_move.new_y1 = n_lines - 1;
+                    validity_move.new_y1 = n_lines - 2;
                     validity_move.valid = 1;
-                }else if (board[n_lines - 1][x_new] == -(ID + 10)) {
-                    board[y_old][x_old] = board[n_lines - 1][x_new];
-                    board[n_lines - 1][x_new] = ID + 10+1;
+                }else if (board[n_lines - 2][x_new] == -(ID + 10)) {
+                    board[y_old][x_old] = board[n_lines - 2][x_new];
+                    board[n_lines - 2][x_new] = ID + 10+1;
 
                     validity_move.flag2player = 2;
                     validity_move.character2 = 3;
                     validity_move.new_x2 = x_old;
                     validity_move.new_y2 = y_old;
                     validity_move.new_x1 = x_new;
-                    validity_move.new_y1 = n_lines - 1;
+                    validity_move.new_y1 = n_lines - 2;
                     validity_move.valid = 1;
 
 
-                }else if (board[n_lines - 1][x_new] < -10) {
+                }else if (board[n_lines - 2][x_new] < -10) {
 
                     //monster and eats it
-                    ID_other = (-board[n_lines - 1][x_new])-10 ;
+                    ID_other = (-board[n_lines - 2][x_new])-10 ;
                     board[y_old][x_old] = 0;
-                    board[n_lines - 1][x_new] = 10 + ID+1;
+                    board[n_lines - 2][x_new] = 10 + ID+1;
                     validity_move.flag2player = 3;
                     validity_move.character2 = 3;
 
@@ -1446,17 +1474,18 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
                     validity_move.other_rgb_r = other_list->rgb_r;
                     validity_move.other_rgb_g = other_list->rgb_g;
                     validity_move.other_rgb_b = other_list->rgb_b;
+                    validity_move.other_ID=ID_other;
                     validity_move.new_x1 = x_new;
-                    validity_move.new_y1 = n_lines - 1;
+                    validity_move.new_y1 = n_lines - 2;
                     validity_move.valid = 1;
 
 
                 }else {
                     validity_move.new_y1 = y_old;
-                    validity_move.new_x1 = x_new;
+                    validity_move.new_x1 = x_old;
+                    board[y_old][x_old]=0;
 
                     board[validity_move.new_y1][validity_move.new_x1]=(ID+10)+1;
-                    board[y_old][x_old]=0;
                     validity_move.valid = 1;
 
                 }
@@ -1505,6 +1534,7 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
                     validity_move.new_y2 = y_old;
                     if (ID_other % 2 == 0) {
                         validity_move.character2 = 2;
+                        validity_move.other_ID=ID_other-1;
 
                         other_list = get_IDlist(Clients, ID_other - 1);
                         other_list->xp=x_old;
@@ -1512,6 +1542,7 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
 
                     } else {
                         validity_move.character2 = 1;
+                        validity_move.other_ID=ID_other;
 
                         other_list = get_IDlist(Clients, ID_other);
                         other_list->xp=x_old;
@@ -1557,6 +1588,7 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
                     validity_move.other_rgb_r = other_list->rgb_r;
                     validity_move.other_rgb_g = other_list->rgb_g;
                     validity_move.other_rgb_b = other_list->rgb_b;
+                    validity_move.other_ID=ID_other;
                     validity_move.new_x1 = x_new;
                     validity_move.new_y1 = 1;
                     validity_move.valid = 1;
@@ -1564,10 +1596,10 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
 
                 } else {
                     validity_move.new_y1 = y_old;
-                    validity_move.new_x1 = x_new;
+                    validity_move.new_x1 = x_old;
+                    board[y_old][x_old]=0;
 
                     board[validity_move.new_y1][validity_move.new_x1]=(ID+10)+1;
-                    board[y_old][x_old]=0;
                     validity_move.valid = 1;
                 }
 
@@ -1607,6 +1639,7 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
                 validity_move.new_y2 = y_old;
                 if (ID_other % 2 == 0) {
                     validity_move.character2 = 2;
+                    validity_move.other_ID=ID_other-1;
 
                     other_list = get_IDlist(Clients, ID_other - 1);
                     other_list->xp=x_old;
@@ -1614,6 +1647,7 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
 
                 } else {
                     validity_move.character2 = 1;
+                    validity_move.other_ID=ID_other;
 
                     other_list = get_IDlist(Clients, ID_other);
                     other_list->xp=x_old;
@@ -1659,6 +1693,7 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
                 validity_move.other_rgb_r = other_list->rgb_r;
                 validity_move.other_rgb_g = other_list->rgb_g;
                 validity_move.other_rgb_b = other_list->rgb_b;
+                validity_move.other_ID=ID_other;
                 validity_move.new_x1 = x_new;
                 validity_move.new_y1 = y_new;
                 validity_move.valid = 1;
@@ -1710,6 +1745,7 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
                                 validity_move.new_y2 = y_old;
                                 if (ID_other % 2 == 0) {
                                     validity_move.character2 = 2;
+                                    validity_move.other_ID=ID_other-1;
 
                                     other_list = get_IDlist(Clients, ID_other - 1);
                                     other_list->xp=x_old;
@@ -1717,6 +1753,7 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
 
                                 } else {
                                     validity_move.character2 = 1;
+                                    validity_move.other_ID=ID_other;
 
                                     other_list = get_IDlist(Clients, ID_other);
                                     other_list->xp=x_old;
@@ -1762,6 +1799,7 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
                                 validity_move.other_rgb_r = other_list->rgb_r;
                                 validity_move.other_rgb_g = other_list->rgb_g;
                                 validity_move.other_rgb_b = other_list->rgb_b;
+                                validity_move.other_ID=ID_other;
                                 validity_move.new_x1 = x_new-2;
                                 validity_move.new_y1 = y_new;
                                 validity_move.valid = 1;
@@ -1828,6 +1866,7 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
                                 validity_move.new_y2 = y_old;
                                 if (ID_other % 2 == 0) {
                                     validity_move.character2 = 2;
+                                    validity_move.other_ID=ID_other-1;
 
                                     other_list = get_IDlist(Clients, ID_other - 1);
                                     other_list->xp=x_old;
@@ -1835,6 +1874,7 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
 
                                 } else {
                                     validity_move.character2 = 1;
+                                    validity_move.other_ID=ID_other;
 
                                     other_list = get_IDlist(Clients, ID_other);
                                     other_list->xp=x_old;
@@ -1880,6 +1920,7 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
                                 validity_move.other_rgb_r = other_list->rgb_r;
                                 validity_move.other_rgb_g = other_list->rgb_g;
                                 validity_move.other_rgb_b = other_list->rgb_b;
+                                validity_move.other_ID=ID_other;
                                 validity_move.new_x1 = x_new+2;
                                 validity_move.new_y1 = y_new;
                                 validity_move.valid = 1;
@@ -1953,6 +1994,7 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
                                 validity_move.new_y2 = y_old;
                                 if (ID_other % 2 == 0) {
                                     validity_move.character2 = 2;
+                                    validity_move.other_ID=ID_other-1;
 
                                     other_list = get_IDlist(Clients, ID_other - 1);
                                     other_list->xp=x_old;
@@ -1960,6 +2002,7 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
 
                                 } else {
                                     validity_move.character2 = 1;
+                                    validity_move.other_ID=ID_other;
 
                                     other_list = get_IDlist(Clients, ID_other);
                                     other_list->xp=x_old;
@@ -2005,6 +2048,7 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
                                 validity_move.other_rgb_r = other_list->rgb_r;
                                 validity_move.other_rgb_g = other_list->rgb_g;
                                 validity_move.other_rgb_b = other_list->rgb_b;
+                                validity_move.other_ID=ID_other;
                                 validity_move.new_x1 = x_new;
                                 validity_move.new_y1 = y_new-2;
                                 validity_move.valid = 1;
@@ -2071,6 +2115,7 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
                                 validity_move.new_y2 = y_old;
                                 if (ID_other % 2 == 0) {
                                     validity_move.character2 = 2;
+                                    validity_move.other_ID=ID_other-1;
 
                                     other_list = get_IDlist(Clients, ID_other - 1);
                                     other_list->xp=x_old;
@@ -2078,6 +2123,7 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
 
                                 } else {
                                     validity_move.character2 = 1;
+                                    validity_move.other_ID=ID_other;
 
                                     other_list = get_IDlist(Clients, ID_other);
                                     other_list->xp=x_old;
@@ -2123,6 +2169,7 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
                                 validity_move.other_rgb_r = other_list->rgb_r;
                                 validity_move.other_rgb_g = other_list->rgb_g;
                                 validity_move.other_rgb_b = other_list->rgb_b;
+                                validity_move.other_ID=ID_other;
                                 validity_move.new_x1 = x_new;
                                 validity_move.new_y1 = y_new+2;
                                 validity_move.valid = 1;
@@ -2203,6 +2250,7 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
                     validity_move.other_rgb_r = other_list->rgb_r;
                     validity_move.other_rgb_g = other_list->rgb_g;
                     validity_move.other_rgb_b = other_list->rgb_b;
+                    validity_move.other_ID=ID_other;
                     validity_move.new_x1 = n_cols - 2;
                     validity_move.new_y1 = y_new;
                     validity_move.valid = 1;
@@ -2226,6 +2274,7 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
                         validity_move.other_rgb_r = other_list->rgb_r;
                         validity_move.other_rgb_g = other_list->rgb_g;
                         validity_move.other_rgb_b = other_list->rgb_b;
+                        validity_move.other_ID=ID_other;
                         validity_move.new_x2=other_list->xp;
                         validity_move.new_y2=other_list->yp;
 
@@ -2257,6 +2306,7 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
                         board[elem / n_cols][elem % n_cols] = (10 + ID_other);
                         validity_move.new_x2 = elem % n_cols;
                         validity_move.new_y2 = elem / n_cols;
+                        validity_move.other_ID=ID_other;
                         other_list = get_IDlist(Clients, ID_other);
                         other_list->xp = elem % n_cols;
                         other_list->yp = elem / n_cols;
@@ -2270,10 +2320,10 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
                     }
                 } else {
                     validity_move.new_x1 = x_old;
-                    validity_move.new_y1 = y_new;
+                    validity_move.new_y1 = y_old;
+                    board[y_old][x_old] = 0;
 
                     board[validity_move.new_y1][validity_move.new_x1] = -(ID + 10);
-                    board[y_old][x_old] = 0;
                     validity_move.valid = 1;
                 }
             } else if (x_new < 0) {
@@ -2310,6 +2360,7 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
                     validity_move.character2 = 3;
                     validity_move.new_x2 = x_old;
                     validity_move.new_y2 = y_old;
+                    validity_move.other_ID=ID_other;
 
                     other_list = get_IDlist(Clients, ID_other);
                     other_list->xm=x_old;
@@ -2343,6 +2394,7 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
                         validity_move.other_rgb_b = other_list->rgb_b;
                         validity_move.new_x2=other_list->xp;
                         validity_move.new_y2=other_list->yp;
+                        validity_move.other_ID=ID_other;
 
                         //superpowerpacman
                         //gets eaten
@@ -2372,6 +2424,7 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
                         board[elem / n_cols][elem % n_cols] = (10 + ID_other);
                         validity_move.new_x2 = elem % n_cols;
                         validity_move.new_y2 = elem / n_cols;
+                        validity_move.other_ID=ID_other;
                         other_list = get_IDlist(Clients, ID_other);
                         other_list->xp = elem % n_cols;
                         other_list->yp = elem / n_cols;
@@ -2385,10 +2438,10 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
                     }
                 } else {
                     validity_move.new_x1 = x_old;
-                    validity_move.new_y1 = y_new;
+                    validity_move.new_y1 = y_old;
+                    board[y_old][x_old] = 0;
 
                     board[validity_move.new_y1][validity_move.new_x1] = -(ID + 10);
-                    board[y_old][x_old] = 0;
                     validity_move.valid = 1;
 
                 }
@@ -2401,31 +2454,32 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
                     board[y_old][x_old] = 0;
                     validity_move.valid = 1;
 
-                }else if (board[n_lines - 1][x_new] == 4){
-                    board[n_lines - 1][x_new] = -(10 + ID);
+                }else if (board[n_lines - 2][x_new] == 4){
+                    board[n_lines - 2][x_new] = -(10 + ID);
                     validity_move.new_x1 = x_new;
-                    validity_move.new_y1 = n_lines - 1;
+                    validity_move.new_y1 = n_lines - 2;
                     board[y_old][x_old]=0;
 
                     validity_move.flag_newfruit = 1;
                     validity_move.valid = 1;
 
-                }else if (board[n_lines - 1][x_new] == 5){
-                    board[n_lines - 1][x_new] = -(10 + ID);
+                }else if (board[n_lines - 2][x_new] == 5){
+                    board[n_lines - 2][x_new] = -(10 + ID);
                     validity_move.new_x1 = x_new;
-                    validity_move.new_y1 = n_lines - 1;
+                    validity_move.new_y1 = n_lines - 2;
                     board[y_old][x_old]=0;
 
                     validity_move.flag_newfruit = 2;
                     validity_move.valid = 1;
-                } else if (board[n_lines - 1][x_new] < -10) {
-                    ID_other = (-10) - (board[n_lines - 1][x_new]);
-                    board[y_old][x_old] = board[n_lines - 1][x_new];
-                    board[n_lines - 1][x_new] = -(10 + ID);
+                } else if (board[n_lines-2][x_new] < -10) {
+                    ID_other = (-10) - (board[n_lines - 2][x_new]);
+                    board[y_old][x_old] = board[n_lines - 2][x_new];
+                    board[n_lines - 2][x_new] = -(10 + ID);
                     validity_move.flag2player = 1;
                     validity_move.character2 = 3;
                     validity_move.new_x2 = x_old;
                     validity_move.new_y2 = y_old;
+                    validity_move.other_ID=ID_other;
 
                     other_list = get_IDlist(Clients, ID_other);
                     other_list->xm=x_old;
@@ -2435,30 +2489,31 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
                     validity_move.other_rgb_g = other_list->rgb_g;
                     validity_move.other_rgb_b = other_list->rgb_b;
                     validity_move.new_x1 = x_new;
-                    validity_move.new_y1 = n_lines - 1;
+                    validity_move.new_y1 = n_lines - 2;
                     validity_move.valid = 1;
                     //monster of another player
-                } else if (board[n_lines - 1][x_new] == (ID + 10)) {
+                } else if (board[n_lines - 2][x_new] == (ID + 10)) {
                     //the pacman of the same player
 
-                    board[y_old][x_old] = board[n_lines - 1][x_new];
-                    board[n_lines - 1][x_new] = -(ID + 10);
+                    board[y_old][x_old] = board[n_lines - 2][x_new];
+                    board[n_lines - 2][x_new] = -(ID + 10);
                     validity_move.flag2player = 2;
                     validity_move.character2 = 1;
                     validity_move.new_x2 = x_old;
                     validity_move.new_y2 = y_old;
                     validity_move.new_x1 = x_new;
-                    validity_move.new_y1 = n_lines - 1;
+                    validity_move.new_y1 = n_lines - 2;
                     validity_move.valid = 1;
-                }else if (board[n_lines - 1][x_new] >10) {
-                    if(board[n_lines - 1][x_new]%2==0){
-                        ID_other = board[n_lines - 1][x_new]-10-1;
+                }else if (board[n_lines - 2][x_new] >10) {
+                    if(board[n_lines - 2][x_new]%2==0){
+                        ID_other = board[n_lines - 2][x_new]-10-1;
                         other_list = get_IDlist(Clients, ID_other);
                         validity_move.other_rgb_r = other_list->rgb_r;
                         validity_move.other_rgb_g = other_list->rgb_g;
                         validity_move.other_rgb_b = other_list->rgb_b;
                         validity_move.new_x2=other_list->xp;
                         validity_move.new_y2=other_list->yp;
+                        validity_move.other_ID=ID_other;
 
                         //superpowerpacman
                         //gets eaten
@@ -2477,9 +2532,10 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
                     }else {
                         //pacman
                         // eats it
-                        ID_other = board[n_lines - 1][x_new] - 10;
+                        printf("32\n");
+                        ID_other = board[n_lines - 2][x_new] - 10;
                         board[y_old][x_old] = 0;
-                        board[n_lines - 1][x_new] = -(10 + ID);
+                        board[n_lines - 2][x_new] = -(10 + ID);
                         validity_move.flag2player = 1;
                         validity_move.character2 = 1;
 
@@ -2488,6 +2544,7 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
                         board[elem / n_cols][elem % n_cols] = (10 + ID_other);
                         validity_move.new_x2 = elem % n_cols;
                         validity_move.new_y2 = elem / n_cols;
+                        validity_move.other_ID=ID_other;
                         other_list = get_IDlist(Clients, ID_other);
                         other_list->xp = elem % n_cols;
                         other_list->yp = elem / n_cols;
@@ -2496,20 +2553,19 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
                         validity_move.other_rgb_g = other_list->rgb_g;
                         validity_move.other_rgb_b = other_list->rgb_b;
                         validity_move.new_x1 = x_new;
-                        validity_move.new_y1 = n_lines - 1;
+                        validity_move.new_y1 = n_lines - 2;
                         validity_move.valid = 1;
                     }
                 } else {
                     validity_move.new_y1 = y_old;
-                    validity_move.new_x1 = x_new;
+                    validity_move.new_x1 = x_old;
+                    board[y_old][x_old] = 0;
 
                     board[validity_move.new_y1][validity_move.new_x1] = -(ID + 10);
-                    board[y_old][x_old] = 0;
                     validity_move.valid = 1;
 
                 }
             } else if (y_new < 0) {
-
                 if (board[1][x_new] == 0) {
                     validity_move.new_y1 = 1;
                     validity_move.new_x1 = x_new;
@@ -2543,6 +2599,7 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
                     validity_move.character2 = 3;
                     validity_move.new_x2 = x_old;
                     validity_move.new_y2 = y_old;
+                    validity_move.other_ID=ID_other;
 
                     other_list = get_IDlist(Clients, ID_other);
                     other_list->xm=x_old;
@@ -2576,6 +2633,7 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
                         validity_move.other_rgb_b = other_list->rgb_b;
                         validity_move.new_x2=other_list->xp;
                         validity_move.new_y2=other_list->yp;
+                        validity_move.other_ID=ID_other;
 
                         //superpowerpacman
                         //gets eaten
@@ -2605,6 +2663,7 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
                         board[elem / n_cols][elem % n_cols] = (10 + ID_other);
                         validity_move.new_x2 = elem % n_cols;
                         validity_move.new_y2 = elem / n_cols;
+                        validity_move.other_ID=ID_other;
                         other_list = get_IDlist(Clients, ID_other);
                         other_list->xp = elem % n_cols;
                         other_list->yp = elem / n_cols;
@@ -2618,10 +2677,10 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
                     }
                 }else {
                     validity_move.new_y1 = y_old;
-                    validity_move.new_x1 = x_new;
+                    validity_move.new_x1 = x_old;
+                    board[y_old][x_old] = 0;
 
                     board[validity_move.new_y1][validity_move.new_x1] = -(ID + 10);
-                    board[y_old][x_old] = 0;
                     validity_move.valid = 1;
                 }
             }else if (board[y_new][x_new] == 4){
@@ -2649,6 +2708,7 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
                 validity_move.character2 = 3;
                 validity_move.new_x2 = x_old;
                 validity_move.new_y2 = y_old;
+                validity_move.other_ID=ID_other;
 
                 other_list = get_IDlist(Clients, ID_other);
                 other_list->xm=x_old;
@@ -2663,7 +2723,6 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
                 //monster of another player
             } else if (board[y_new][x_new] == (ID + 10)) {
                 //the pacman of the same player
-
                 board[y_old][x_old] = board[y_new][x_new];
                 board[y_new][x_new] = -(ID + 10);
                 validity_move.flag2player = 2;
@@ -2682,6 +2741,7 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
                     validity_move.other_rgb_b = other_list->rgb_b;
                     validity_move.new_x2=other_list->xp;
                     validity_move.new_y2=other_list->yp;
+                    validity_move.other_ID=ID_other;
 
                     //superpowerpacman
                     //gets eaten
@@ -2711,6 +2771,7 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
                     board[elem / n_cols][elem % n_cols] = (10 + ID_other);
                     validity_move.new_x2 = elem % n_cols;
                     validity_move.new_y2 = elem / n_cols;
+                    validity_move.other_ID=ID_other;
                     other_list = get_IDlist(Clients, ID_other);
                     other_list->xp = elem % n_cols;
                     other_list->yp = elem / n_cols;
@@ -2758,6 +2819,7 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
                                 validity_move.character2 = 3;
                                 validity_move.new_x2 = x_old;
                                 validity_move.new_y2 = y_old;
+                                validity_move.other_ID=ID_other;
 
                                 other_list = get_IDlist(Clients, ID_other);
                                 other_list->xm=x_old;
@@ -2791,6 +2853,7 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
                                     validity_move.other_rgb_b = other_list->rgb_b;
                                     validity_move.new_x2=other_list->xp;
                                     validity_move.new_y2=other_list->yp;
+                                    validity_move.other_ID=ID_other;
 
                                     //superpowerpacman
                                     //gets eaten
@@ -2820,6 +2883,7 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
                                     board[elem / n_cols][elem % n_cols] = (10 + ID_other);
                                     validity_move.new_x2 = elem % n_cols;
                                     validity_move.new_y2 = elem / n_cols;
+                                    validity_move.other_ID=ID_other;
                                     other_list = get_IDlist(Clients, ID_other);
                                     other_list->xp = elem % n_cols;
                                     other_list->yp = elem / n_cols;
@@ -2882,6 +2946,7 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
                                 validity_move.character2 = 3;
                                 validity_move.new_x2 = x_old;
                                 validity_move.new_y2 = y_old;
+                                validity_move.other_ID=ID_other;
 
                                 other_list = get_IDlist(Clients, ID_other);
                                 other_list->xm=x_old;
@@ -2915,6 +2980,7 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
                                     validity_move.other_rgb_b = other_list->rgb_b;
                                     validity_move.new_x2=other_list->xp;
                                     validity_move.new_y2=other_list->yp;
+                                    validity_move.other_ID=ID_other;
 
                                     //superpowerpacman
                                     //gets eaten
@@ -2944,6 +3010,7 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
                                     board[elem / n_cols][elem % n_cols] = (10 + ID_other);
                                     validity_move.new_x2 = elem % n_cols;
                                     validity_move.new_y2 = elem / n_cols;
+                                    validity_move.other_ID=ID_other;
                                     other_list = get_IDlist(Clients, ID_other);
                                     other_list->xp = elem % n_cols;
                                     other_list->yp = elem / n_cols;
@@ -3013,6 +3080,7 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
                                 validity_move.character2 = 3;
                                 validity_move.new_x2 = x_old;
                                 validity_move.new_y2 = y_old;
+                                validity_move.other_ID=ID_other;
 
                                 other_list = get_IDlist(Clients, ID_other);
                                 other_list->xm=x_old;
@@ -3046,6 +3114,7 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
                                     validity_move.other_rgb_b = other_list->rgb_b;
                                     validity_move.new_x2=other_list->xp;
                                     validity_move.new_y2=other_list->yp;
+                                    validity_move.other_ID=ID_other;
 
                                     //superpowerpacman
                                     //gets eaten
@@ -3075,6 +3144,7 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
                                     board[elem / n_cols][elem % n_cols] = (10 + ID_other);
                                     validity_move.new_x2 = elem % n_cols;
                                     validity_move.new_y2 = elem / n_cols;
+                                    validity_move.other_ID=ID_other;
                                     other_list = get_IDlist(Clients, ID_other);
                                     other_list->xp = elem % n_cols;
                                     other_list->yp = elem / n_cols;
@@ -3136,6 +3206,7 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
                                 validity_move.character2 = 3;
                                 validity_move.new_x2 = x_old;
                                 validity_move.new_y2 = y_old;
+                                validity_move.other_ID=ID_other;
 
                                 other_list = get_IDlist(Clients, ID_other);
                                 other_list->xm=x_old;
@@ -3169,6 +3240,7 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
                                     validity_move.other_rgb_b = other_list->rgb_b;
                                     validity_move.new_x2=other_list->xp;
                                     validity_move.new_y2=other_list->yp;
+                                    validity_move.other_ID=ID_other;
 
                                     //superpowerpacman
                                     //gets eaten
@@ -3198,6 +3270,7 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
                                     board[elem / n_cols][elem % n_cols] = (10 + ID_other);
                                     validity_move.new_x2 = elem % n_cols;
                                     validity_move.new_y2 = elem / n_cols;
+                                    validity_move.other_ID=ID_other;
                                     other_list = get_IDlist(Clients, ID_other);
                                     other_list->xp = elem % n_cols;
                                     other_list->yp = elem / n_cols;
@@ -3249,14 +3322,37 @@ void * clientThreadi(void * arg){
     struct threadclient_arg *my_arg = (struct threadclient_arg *)arg;
     int sock_fd=(*my_arg).sock_fd;
     int ID=(*my_arg).ID;
-    //int ID_other;
-    //-------------------------------------------------------//
-    //----sending board size and sending initial position----//
-    //-------------------------------------------------------//
+    int i,j;
 
-    connect_msg con_msg;
+    //----------------------------------------------------------------------------------------------------------//
+    //------------------------------------receiving the colour of the character---------------------------------//
+    //----------------------------------------------------------------------------------------------------------//
+    message m;
+    int err_rcv;
+    err_rcv = recv(sock_fd, &m , sizeof(m), 0);
+    if (err_rcv<0){
+        perror("Error in reading: ");
+        exit(-1);
+    }
+
+
+    colour_msg msg_colour;
+    err_rcv = recv(sock_fd, &msg_colour , m.size, 0);
+    if (err_rcv<0){
+        perror("Error in reading: ");
+        exit(-1);
+    }
+    int rgb_r=msg_colour.r;
+    int rgb_g=msg_colour.g;
+    int rgb_b=msg_colour.b;
+    //----------------------------------------------------------------------------------------------------------//
+    //------------------------------sending board size and sending initial position-----------------------------//
+    //----------------------------------------------------------------------------------------------------------//
+
+    initialinfo_msg con_msg;
     con_msg.n_lin=n_lines;
     con_msg.n_col=n_cols;
+    con_msg.ID=ID;
 
 
 
@@ -3266,59 +3362,45 @@ void * clientThreadi(void * arg){
         printf("board is full \n");
         //close thread and etc
     }
-    int ini_xp=elem%n_cols;
-    int ini_yp=elem/n_cols;
-
+    con_msg.xpac_ini=elem%n_cols;
+    con_msg.ypac_ini=elem/n_cols;
     elem=set_initialpos(board, n_cols,n_lines);
     if(elem<0){
         printf("board is full \n");
         //close thread and etc
     }
+    con_msg.xm_ini=elem%n_cols;
+    con_msg.ym_ini=elem/n_cols;
+    board[con_msg.ypac_ini][con_msg.xpac_ini]=10+ID;
+    board[con_msg.ym_ini][con_msg.xm_ini]=-(10+ID);
+    printf("initial pos, pacman: x %d,y%d monster: x %d,y%d \n",con_msg.xpac_ini,con_msg.ypac_ini,con_msg.xm_ini,con_msg.ym_ini);
 
-    int ini_xm=elem%n_cols;
-    int ini_ym=elem/n_cols;
-
-
-    board[ini_yp][ini_xp]=10+ID;
-    printf("initial pos: x %d,y%d \n",ini_xp,ini_yp);
-    board[ini_ym][ini_xm]=-(10+ID);
-    con_msg.xpac_ini=ini_xp;
-    con_msg.ypac_ini=ini_yp;
-    con_msg.xm_ini=ini_xm;
-    con_msg.ym_ini=ini_ym;
-
-
-    send(sock_fd, &con_msg, sizeof(con_msg), 0);
-    printf("sending initial informations completed\n");
-
-    int i,j;
-
-    int * ini_board = (int *)malloc(sizeof(int)* (n_cols)*(n_lines));
+    //sending board
+    send_board = (int *)malloc(sizeof(int)* (n_cols)*(n_lines));
     for(i=0;i<n_lines;i++) {
-        for (j = 0; j < n_cols + 1; j++) {
-        ini_board[i*(n_cols)+j]=board[i][j];
+        for (j = 0; j < n_cols; j++) {
+            send_board[i*(n_cols)+j]=board[i][j];
         }
     }
-    /*for ( i = 0 ; i < n_lines+1; i++){
+    for ( i = 0 ; i <  con_msg.n_lin; i++){
         printf("%2d ", i);
-        for ( j = 0 ; j < n_cols+1; j++) {
-            printf("%d", ini_board[i*(n_cols+1)+j]);
+        for ( j = 0 ; j <  con_msg.n_col; j++) {
+            printf("%2d ", send_board[i*(con_msg.n_col)+j]);
         }
         printf("\n");
-    }*/
+    }
 
-    int err=send(sock_fd, ini_board, ((n_lines)*(n_cols))*sizeof(int), 0);
-    printf("%d\n",err);
-
-
+    //sending clients
     IDList * send_list  = (IDList *) malloc(sizeof(IDList));
     send_list=Clients;
+
     int size=0;
     while(send_list!=NULL){
         size++;
         send_list=get_next_ID(send_list);
     }
-    int * send_list_array = (int *)malloc(sizeof(int)*size*4);
+    con_msg.n_entries_of_client_array=size;
+    send_list_array = (int *)malloc(sizeof(int)*size*4);
     i=0;
     send_list=Clients;
     while(send_list!=NULL){
@@ -3328,44 +3410,46 @@ void * clientThreadi(void * arg){
         send_list_array[i+3]=send_list->rgb_b;
         i++;
         send_list=get_next_ID(send_list);
-
     }
-    for(i=0;i<size;i++){
-        printf("%d",send_list_array[i]);
-        printf("%d",send_list_array[i+1]);
-        printf("%d",send_list_array[i+2]);
-        printf("%d\n",send_list_array[i+3]);
-    }
-    err=send(sock_fd, &size, sizeof(size), 0);
-    err=send(sock_fd, send_list_array, sizeof(int)*size*4, 0);
 
-    //-------------------------------------------------------//
-    //----------receiving the colour of the character--------//
-    //-------------------------------------------------------//
-    colour_msg rec_msg;
-    int err_rcv;
-    err_rcv = recv(sock_fd, &rec_msg , sizeof(rec_msg), 0);
-    printf("received %d byte %d %d %d \n", err_rcv, rec_msg.r, rec_msg.g, rec_msg.b);
-    if (err_rcv<0){
-        perror("Error in reading: ");
-        exit(-1);
-    }
-    int rgb_r=rec_msg.r;
-    int rgb_g=rec_msg.g;
-    int rgb_b=rec_msg.b;
+    m.action=10;
+    m.size= sizeof(con_msg);
+    err_rcv=send(sock_fd, &m, sizeof(message), 0);
+    printf("sended data size:%d\n",err_rcv);
+    err_rcv=send(sock_fd, &con_msg, m.size, 0);
+    printf("sending initial informations completed\n");
+    printf("sended data size:%d\n",err_rcv);
 
-    //-------------------------------------------------------//
-    //paint and send initial positions to all other clients--//
-    //-------------------------------------------------------//
+    m.action=11;
+    m.size= sizeof(int *)*(n_cols)*(n_lines);
+    err_rcv=send(sock_fd, &m, sizeof(message), 0);
+    printf("sended data size:%d\n",err_rcv);
+    err_rcv=send(sock_fd, send_board, m.size, 0);
+    printf("sending initial informations completed\n");
+    printf("sended data size:%d\n",err_rcv);
+
+    m.action=12;
+    m.size= sizeof(int)*size*4;
+    err_rcv=send(sock_fd, &m, sizeof(message), 0);
+    printf("sended data size:%d\n",err_rcv);
+    err_rcv=send(sock_fd, send_list_array, m.size, 0);
+    printf("sending initial informations completed\n");
+    printf("sended data size:%d\n",err_rcv);
+
+
+
+
+    //------------------------------------------------------------------------------------------------------//
+    //-------------------------paint and send initial positions to all other clients------------------------//
+    //------------------------------------------------------------------------------------------------------//
     SDL_Event new_event;
-    character_mov_msg msg_pos;
     Event_ShownewCharacter_Data *event_data_ini;
 
     event_data_ini = malloc(sizeof(Event_ShownewCharacter_Data));
-    event_data_ini->xp = ini_xp;
-    event_data_ini->yp = ini_yp;
-    event_data_ini->xm = ini_xm;
-    event_data_ini->ym= ini_ym;
+    event_data_ini->xp = con_msg.xpac_ini;
+    event_data_ini->yp = con_msg.ypac_ini;
+    event_data_ini->xm = con_msg.xm_ini;
+    event_data_ini->ym= con_msg.ym_ini;
     event_data_ini->r = rgb_r;
     event_data_ini->g = rgb_g;
     event_data_ini->b = rgb_b;
@@ -3377,9 +3461,9 @@ void * clientThreadi(void * arg){
 
 
 
-    //-------------------------------------------------------//
-    //----------------Insert new client info-----------------//
-    //-------------------------------------------------------//
+    //----------------------------------------------------------------------------------------------------------//
+    //---------------------------------------------Insert new client info---------------------------------------//
+    //----------------------------------------------------------------------------------------------------------//
     IDList * this_client = (IDList *) malloc(sizeof(IDList));
     if(this_client == NULL){
         return NULL;
@@ -3389,16 +3473,16 @@ void * clientThreadi(void * arg){
     this_client->rgb_r = rgb_r;
     this_client->rgb_g = rgb_g;
     this_client->rgb_b = rgb_b;
-    this_client->xp=ini_xp;
-    this_client->yp=ini_yp;
-    this_client->xm=ini_xm;
-    this_client->ym=ini_ym;
+    this_client->xp=con_msg.xpac_ini;
+    this_client->yp=con_msg.ypac_ini;
+    this_client->xm=con_msg.xm_ini;
+    this_client->ym=con_msg.ym_ini;
     this_client->superpower=0;
     this_client->next = NULL;
 
-    //-------------------------------------------------------//
-    //----------------Insert new fruit to the board----------//
-    //-------------------------------------------------------//
+    //---------------------------------------------------------------------------------------------------------//
+    //----------------------------------------Insert new fruit to the board-------------------------------------//
+    //---------------------------------------------------------------------------------------------------------//
     int error;
     Fruits_Struct * Cherry_list= (Fruits_Struct *) malloc(sizeof(Fruits_Struct));
     Fruits_Struct * Lemon_list=  (Fruits_Struct *) malloc(sizeof(Fruits_Struct));
@@ -3463,25 +3547,13 @@ void * clientThreadi(void * arg){
     //need to make sync here
     Clients=insert_new_ID(Clients, this_client);
 
-    send_list=Clients;
-    while(send_list!=NULL){
-        printf("%d ",send_list->ID);
-        printf("%d ",send_list->xp);
-        printf("%d ",send_list->yp);
-        printf("%d ",send_list->xm);
-        printf("%d ",send_list->ym);
-        printf("%d ",send_list->rgb_r);
-        printf("%d ",send_list->rgb_g);
-        printf("%d ",send_list->rgb_b);
-        printf("%d ",send_list->socket);
-        printf("%d\n ",send_list->score);
-        send_list=get_next_ID(send_list);
-    }
+
     //-------------------------------------------------------//
-    //---------read the moves made by the client-------------//
-    //----loop receiving updated positions  from socket------//
+    //------Initialize the variables for the game moves------//
     //-------------------------------------------------------//
     int x_new,y_new,character,flag_2player=0;
+    send_character_pos_msg msg_pos;
+
 
     Event_ShowCharacter_Data *event_data;
     event_data = malloc(sizeof(Event_ShowCharacter_Data));
@@ -3539,28 +3611,14 @@ void * clientThreadi(void * arg){
     IDList * other_client = (IDList *) malloc(sizeof(IDList));
     int ID_other;
 
-    while((err_rcv=recv(sock_fd, &msg_pos, sizeof(msg_pos),0))>0){
-        printf("cycle receiving %d byte %d %d %d\n",err_rcv,msg_pos.character,msg_pos.x,msg_pos.y);
-        x_new = msg_pos.x;
-        y_new = msg_pos.y;
-        character=msg_pos.character;
+    //-------------------------------------------------------//
+    //---------read the moves made by the client-------------//
+    //----loop receiving updated positions  from socket------//
+    //-------------------------------------------------------//
 
-        // get old position NEED SYNC
-        if(character==1 ){
-            x_old=this_client->xp;
-            y_old=this_client->yp;
-            printf("old_p x: %d y: %d \n",x_old,y_old);
-        }
-        if(character==3){
-            x_old=this_client->xm;
-            y_old=this_client->ym;
-            superpower=this_client->superpower;
-            printf("old_m x: %d y: %d \n",x_old,y_old);
-        }
+    while((err_rcv=recv(sock_fd, &m, sizeof(m),0))>0){
 
-
-
-        if(character==-1){
+        if(m.action==9){
 
             //NEED SYNC HERE
             board[this_client->yp][this_client->xp]=0;
@@ -3622,13 +3680,43 @@ void * clientThreadi(void * arg){
 
             //clear socket
             puts("client disconnected");
+            printf("%d %d\n", n_cols, n_lines);
+            for ( i = 0 ; i < n_lines; i++){
+                printf("%2d ", i);
+                for ( j = 0 ; j < n_cols; j++) {
+                    printf("%d", board[i][j]);
+                }
+                printf("\n");
+            }
             close(sock_fd);
             pthread_exit(NULL);
-        }else if (x_new==x_old && y_new==y_old){
-            //check if position has changed
+        }
+
+
+        err_rcv = recv(sock_fd, &msg_pos, sizeof(msg_pos), 0);
+        printf("cycle receiving %d byte %d %d %d\n", err_rcv, msg_pos.character, msg_pos.x, msg_pos.y);
+        x_new = msg_pos.x;
+        y_new = msg_pos.y;
+        character = msg_pos.character;
+
+        // get old position NEED SYNC
+        if (character == 1) {
+            x_old = this_client->xp;
+            y_old = this_client->yp;
+            printf("old_p x: %d y: %d \n", x_old, y_old);
+        } else if (character == 3) {
+            x_old = this_client->xm;
+            y_old = this_client->ym;
+            superpower = this_client->superpower;
+            printf("old_m x: %d y: %d \n", x_old, y_old);
+        } else {
+            continue;
+        }
+
+        if (x_new == x_old && y_new == y_old) {
             continue;
         }else{
-            if (character==1 ) {
+            if(character==1){
 
                 sem_getvalue(&arg_sem1.sem_nplay2, &sem_value_nplaypersec);
                 if (sem_value_nplaypersec == 0) {
@@ -3676,6 +3764,7 @@ void * clientThreadi(void * arg){
                         event_data->r = rgb_r;
                         event_data->g = rgb_g;
                         event_data->b = rgb_b;
+                        event_data->ID=ID;
 
                         // send the event
                         SDL_zero(new_event);
@@ -3703,6 +3792,7 @@ void * clientThreadi(void * arg){
                         event_data->r = rgb_r;
                         event_data->g = rgb_g;
                         event_data->b = rgb_b;
+                        event_data->ID=ID;
 
                         // send the event
                         SDL_zero(new_event);
@@ -3733,6 +3823,8 @@ void * clientThreadi(void * arg){
                             event_data->r = rgb_r;
                             event_data->g = rgb_g;
                             event_data->b = rgb_b;
+                            event_data->ID=ID;
+
 
                             // send the event
                             SDL_zero(new_event);
@@ -3765,6 +3857,8 @@ void * clientThreadi(void * arg){
                             event_data2player->r2 = validity_move.other_rgb_r;
                             event_data2player->g2 = validity_move.other_rgb_g;
                             event_data2player->b2 = validity_move.other_rgb_b;
+                            event_data2player->ID1=ID;
+                            event_data2player->ID2=validity_move.other_ID;
 
                             // send the event
                             SDL_zero(new_event);
@@ -3788,6 +3882,8 @@ void * clientThreadi(void * arg){
                             event_data2player->r2 = rgb_r;
                             event_data2player->g2 = rgb_g;
                             event_data2player->b2 = rgb_b;
+                            event_data2player->ID1=ID;
+                            event_data2player->ID2=ID;
 
                             // send the event
                             SDL_zero(new_event);
@@ -3922,6 +4018,7 @@ void * clientThreadi(void * arg){
                                     event_data->r = validity_move.other_rgb_r;
                                     event_data->g = validity_move.other_rgb_g;
                                     event_data->b = validity_move.other_rgb_b;
+                                    event_data->ID=ID_other;
 
                                     // send the event
                                     SDL_zero(new_event);
@@ -3940,6 +4037,7 @@ void * clientThreadi(void * arg){
                             event_data->r = rgb_r;
                             event_data->g = rgb_g;
                             event_data->b = rgb_b;
+                            event_data->ID=ID;
 
                             // send the event
                             SDL_zero(new_event);
@@ -3967,6 +4065,9 @@ void * clientThreadi(void * arg){
                             event_data2player->r2 = validity_move.other_rgb_r;
                             event_data2player->g2 = validity_move.other_rgb_g;
                             event_data2player->b2 = validity_move.other_rgb_b;
+                            event_data2player->ID1=ID;
+                            event_data2player->ID2=validity_move.other_ID;
+                            printf("%d %d\n",ID,validity_move.other_ID);
 
                             // send the event
                             SDL_zero(new_event);
@@ -3990,6 +4091,8 @@ void * clientThreadi(void * arg){
                             event_data2player->r2 = rgb_r;
                             event_data2player->g2 = rgb_g;
                             event_data2player->b2 = rgb_b;
+                            event_data2player->ID1=ID;
+                            event_data2player->ID2=ID;
 
                             // send the event
                             SDL_zero(new_event);
@@ -4114,6 +4217,7 @@ void * thread_Accept(void * argc){
     return (NULL);
 }
 
+
 void * send_scores(void * argc){
     IDList *aux;
     while(1){
@@ -4129,6 +4233,7 @@ void * send_scores(void * argc){
             } else {
                 aux=Clients;
                 while (aux != NULL) {
+
                     printf("Client ID: %d score: %d \n\n", aux->ID, aux->score);
                     aux = get_next_ID(aux);
                 }
@@ -4177,7 +4282,6 @@ int main(int argc , char* argv[]){
 
 
             fscanf(fp,"%c", &read_object);
-            printf("ola: %c\n",read_object );
             if(read_object=='B'){
                 paint_brick(j, i);
                 board[i][j]=1;
@@ -4193,8 +4297,6 @@ int main(int argc , char* argv[]){
         printf("Error board is to small\n");
         exit(-1);
     }
-
-
     for ( i = 0 ; i < n_lines; i++){
         printf("%2d ", i);
         for ( j = 0 ; j < n_cols; j++) {
@@ -4236,15 +4338,7 @@ int main(int argc , char* argv[]){
     pthread_create(&thread_Accept_id, NULL, thread_Accept, NULL);
     pthread_create(&thread_score, NULL, send_scores, NULL);
 
-    int rgb_r;
-    int rgb_g;
-    int rgb_b;
-    int x_character;
-    int y_character;
-    int x_newp;
-    int y_newp;
-    int x_newm;
-    int y_newm;
+
 
 /*------------------------------------------------------------------------//  GAME LOGIC///----------------------------------------------------------*/
 
@@ -4265,90 +4359,199 @@ int main(int argc , char* argv[]){
             //------------------------------------------//
             //--- Show a new PACMAN and new Monster-----//
             //------------------------------------------//
-            if (event.type == Event_ShownewCharacter) {
-                character_mov_msg msg;
-                // we get the data (created with the malloc)
-                Event_ShownewCharacter_Data *data = event.user.data1;
 
-                x_newp = data->xp;
-                y_newp = data->yp;
-                x_newm = data->xm;
-                y_newm = data->ym;
-                rgb_r = data->r;
-                rgb_g = data->g;
-                rgb_b = data->b;
-
-                paint_pacman(x_newp, y_newp, rgb_r, rgb_g, rgb_b);
-                printf("new pacman x-%d y-%d\n", x_newp, y_newp);
-                paint_monster(x_newm, y_newm, rgb_r, rgb_g, rgb_b);
-                printf("new monster x-%d y-%d\n", x_newm, y_newm);
-
-                msg.character = 4;
-                msg.x = x_newp;
-                msg.y = y_newp;
-                msg.x_old = x_newm;
-                msg.y_old = y_newm;
-                msg.r = data->r;
-                msg.g = data->g;
-                msg.b = data->b;
-                //SYNC MECHANISM
-                IDList *aux = Clients;
-                while (aux != NULL) {
-                    send(aux->socket, &msg, sizeof(msg), 0);
-                    aux = aux->next;
-
-                }
-            }
             if (event.type == Event_ShowCharacter) {
-                character_mov_msg msg;
+                rec_character_pos_msg msg;
+                message m;
+                m.action=2;
+                m.size= sizeof(msg);
                 // we get the data (created with the malloc)
                 Event_ShowCharacter_Data *data = event.user.data1;
                 clear_place(data->x_old, data->y_old);
 
-                x_character = data->x;
-                y_character = data->y;
-                rgb_r = data->r;
-                rgb_g = data->g;
-                rgb_b = data->b;
-
                 msg.character = data->character;
-                //printf("%d\n", data->character);
-                msg.x = x_character;
-                msg.y = y_character;
-                msg.x_old = data->x_old;
-                msg.y_old = data->y_old;
+                msg.x1 = data->x;
+                msg.y1 = data->y;
+                msg.x2 = data->x_old;
+                msg.y2 = data->y_old;
                 msg.r = data->r;
                 msg.g = data->g;
                 msg.b = data->b;
+                msg.ID= data->ID;
 
                 // we paint a pacman
                 if (data->character == 1) {
-                    paint_pacman(x_character, y_character, rgb_r, rgb_g, rgb_b);
-                    printf("move pacman x-%d y-%d\n", x_character, y_character);
+                    paint_pacman(data->x, data->y, data->r, data->g, data->b);
+                    printf("move pacman x-%d y-%d\n", data->x,  data->y);
                 }
                 // we paint a superpacman
                 if (data->character == 2) {
-                    paint_powerpacman(x_character, y_character, rgb_r, rgb_g, rgb_b);
-                    printf("move pacman x-%d y-%d\n", x_character, y_character);
+                    paint_powerpacman( data->x,  data->y, data->r, data->g, data->b);
+                    printf("move super pacman x-%d y-%d\n",  data->x,  data->y);
                 }
+                //we paint a monster
                 if (data->character == 3) {
-                    //we paint a monster
-                    paint_monster(x_character, y_character, rgb_r, rgb_g, rgb_b);
-                    printf("move monster x-%d y-%d\n", x_character, y_character);
+                    paint_monster( data->x,  data->y, data->r, data->g, data->b);
+                    printf("move monster x-%d y-%d\n",  data->x,  data->y);
                 }
 
                 //SYNC MECHANISM
                 IDList *aux = Clients;
                 while (aux != NULL) {
-                    send(aux->socket, &msg, sizeof(msg), 0);
+                    send(aux->socket, &m, sizeof(message),0);
+                    send(aux->socket, &msg, m.size, 0);
                     aux = aux->next;
                 }
             }
-            //*********************************//
-            //*********************************//
-            //*********************************//
-            if (event.type == Event_Change2Characters) {
 
+            if (event.type == Event_Inactivity) {
+                rec_character_pos_msg msg;
+                message m;
+                m.action=2;
+                m.size= sizeof(msg);
+                // we get the data (created with the malloc)
+                Event_Inactivity_Data *data = event.user.data1;
+                clear_place(data->x_old, data->y_old);
+
+                msg.character = data->character;
+                printf("%d\n", data->character);
+                msg.x1 = data->x;
+                msg.y1 = data->x;
+                msg.x2 = data->x_old;
+                msg.y2 = data->y_old;
+                msg.r = data->r;
+                msg.g = data->g;
+                msg.b = data->b;
+                msg.ID=data->ID;
+
+
+                // we paint a pacman
+                if (data->character == 1) {
+                    paint_pacman(data->x, data->y, data->r, data->g, data->b);
+                    printf("move pacman x-%d y-%d\n", data->x, data->x);
+                }
+                if (data->character == 2) {
+                    paint_pacman(data->x, data->y, data->r, data->g, data->b);
+                    printf("move super pacman x-%d y-%d\n", data->x, data->y);
+                }
+                if (data->character == 3) {
+                    paint_monster(data->x, data->y, data->r, data->g, data->b);
+                    printf("move monster x-%d y-%d\n", data->x, data->y);
+                }
+
+                //SYNC MECHANISM
+                IDList *aux = Clients;
+
+                while (aux != NULL) {
+                    send(aux->socket, &m, sizeof(message),0);
+                    send(aux->socket, &msg, m.size, 0);
+                    aux = aux->next;
+                }
+            }
+
+            if (event.type == Event_ShowFruit) {
+                rec_object_msg msg_fruit;
+                message m;
+                m.action=3;
+                m.size= sizeof(msg_fruit);
+                // we get the data (created with the malloc)
+                Event_ShowFruit_Data *data = event.user.data1;
+
+                if(data->fruit==4) {
+                    msg_fruit.object =4;
+                    paint_cherry(data->x,data->y);
+
+                }
+                else if(data->fruit==5) {
+                    msg_fruit.object =5;
+                    paint_lemon(data->x,data->y);
+                }
+                msg_fruit.x = data->x;
+                msg_fruit.y = data->y;
+                printf("fruit in x-%d y-%d %d\n", data->x, data->y,data->fruit);
+
+
+                //SYNC MECHANISM
+                IDList *aux = Clients;
+
+                while (aux != NULL) {
+                    send(aux->socket, &m, sizeof(message),0);
+                    send(aux->socket, &msg_fruit, m.size, 0);
+                    aux = aux->next;
+                }
+            }
+            if (event.type == Event_ShownewFruits) {
+                rec_object_msg msg_fruit1;
+                rec_object_msg msg_fruit2;
+
+                message m;
+                m.action=3;
+                m.size= sizeof(msg_fruit1);
+                // we get the data (created with the malloc)
+                Event_ShownewFruits_Data *data = event.user.data1;
+                paint_cherry(data->x1,data->y1);
+                paint_lemon(data->x2,data->y2);
+                printf("fruit in -%d y-%d\n", data->x1, data->y1);
+                printf("fruit in -%d y-%d\n", data->x2, data->y2);
+
+                msg_fruit1.object=4;
+                msg_fruit1.x=data->x1;
+                msg_fruit1.y=data->y1;
+
+                msg_fruit2.object=5;
+                msg_fruit2.x=data->x2;
+                msg_fruit2.y=data->y2;
+
+                //SYNC MECHANISM
+                IDList *aux = Clients;
+                while (aux != NULL) {
+                    send(aux->socket, &m, sizeof(message),0);
+                    send(aux->socket, &msg_fruit1, m.size, 0);
+
+                    send(aux->socket, &m, sizeof(message),0);
+                    send(aux->socket, &msg_fruit2, m.size, 0);
+                    aux = aux->next;
+                }
+            }
+
+            if (event.type == Event_ShownewCharacter) {
+                rec_character_pos_msg msg;
+                message m;
+                m.action=4;
+                m.size= sizeof(msg);
+                // we get the data (created with the malloc)
+                Event_ShownewCharacter_Data *data = event.user.data1;
+
+                paint_pacman(data->xp, data->yp, data->r, data->g, data->b);
+                printf("new pacman x-%d y-%d\n", data->xp, data->yp);
+                paint_monster(data->xm, data->ym, data->r, data->g, data->b);
+                printf("new monster x-%d y-%d\n", data->xm, data->ym);
+
+                msg.character = 0;
+                msg.x1 = data->xp;
+                msg.y1 = data->yp;
+                msg.x2 = data->xm;
+                msg.y2 = data->ym;
+                msg.r = data->r;
+                msg.g = data->g;
+                msg.b = data->b;
+                msg.ID=data->ID;
+
+                //SYNC MECHANISM
+                IDList *aux = Clients;
+                while (aux != NULL) {
+                    send(aux->socket, &m, sizeof(message),0);
+                    send(aux->socket, &msg, m.size, 0);
+                    aux = aux->next;
+
+                }
+            }
+
+            if (event.type == Event_Change2Characters){
+                rec_change2characters_msg msg_c2c;
+                message m;
+                m.action=5;
+                m.size= sizeof(msg_c2c);
                 // we get the data (created with the malloc)
                 Event_Change2Characters_Data *data = event.user.data1;
                 //printf("ola2 dvsf %d %d %d \n", data->character1,data->x1,data->y1);
@@ -4370,151 +4573,99 @@ int main(int argc , char* argv[]){
                     paint_monster(data->x2, data->y2, data->r2, data->g2, data->b2);
                 }
 
+                msg_c2c.character1 = data->character1;
+                msg_c2c.x1_old = data->x1_old;
+                msg_c2c.y1_old = data->y1_old;
+                msg_c2c.x1 = data->x1;
+                msg_c2c.y1 = data->y1;
+                msg_c2c.r1 = data->r1;
+                msg_c2c.g1 = data->g1;
+                msg_c2c.b1 = data->b1;
+                msg_c2c.ID1=data->ID1;
+                msg_c2c.character2 = data->character2;
+                msg_c2c.x2 = data->x2;
+                msg_c2c.y2 = data->y2;
+                msg_c2c.r2 = data->r2;
+                msg_c2c.g2 = data->g2;
+                msg_c2c.b2 = data->b2;
+                msg_c2c.ID2=data->ID2;
+                printf("%d %d\n",msg_c2c.ID1,msg_c2c.ID2);
+
+                //SYNC MECHANISM
+                IDList *aux = Clients;
+                while (aux != NULL) {
+                    send(aux->socket, &m, sizeof(message),0);
+                    send(aux->socket, &msg_c2c, m.size, 0);
+                    aux = aux->next;
+
+                }
+
                 //send to all clients
             }
 
             if (event.type == Event_Disconnect) {
-                character_mov_msg msg;
+                rec_character_pos_msg msg;
+                message m;
+                m.action=6;
+                m.size= sizeof(msg);
                 // we get the data (created with the malloc)
                 Event_Disconnect_Data *data = event.user.data1;
 
 
-                msg.character = -1;
-                msg.x = data->xm;
-                msg.y = data->ym;
-                msg.x_old = data->xp;
-                msg.y_old = data->yp;
+                msg.character = 0;
+                msg.x1 = data->xm;
+                msg.y1 = data->ym;
+                msg.x2 = data->xp;
+                msg.y2 = data->yp;
+                msg.r=0;
+                msg.g=0;
+                msg.b=0;
+                msg.ID=0;
 
                 clear_place(data->xm, data->ym);
                 clear_place(data->xp, data->yp);
-                printf("clear -%d y-%d\n", data->xm, data->ym);
-                printf("clear -%d y-%d\n", data->xp, data->yp);
+                printf("clear monster in-%d y-%d\n", data->xm, data->ym);
+                printf("clear pacman  in-%d y-%d\n", data->xp, data->yp);
 
                 //SYNC MECHANISM
                 IDList *aux = Clients;
                 while (aux != NULL) {
-                    printf("send+\n");
-                    send(aux->socket, &msg, sizeof(msg), 0);
+                    send(aux->socket, &m, sizeof(message),0);
+                    send(aux->socket, &msg, m.size, 0);
                     aux = aux->next;
                 }
             }
 
-            if (event.type == Event_ShowFruit) {
-                character_mov_msg msg;
-                // we get the data (created with the malloc)
-                Event_ShowFruit_Data *data = event.user.data1;
-
-                if(data->fruit==4) {
-                    msg.character =4;
-                    paint_cherry(data->x,data->y);
-
-                }
-                else if(data->fruit==5) {
-                    msg.character =5;
-                    paint_lemon(data->x,data->y);
-                }
-                msg.x = data->x;
-                msg.y = data->y;
-                printf("fruit in x-%d y-%d %d\n", data->x, data->y,data->fruit);
-
-                for (i = 0; i < n_lines ; i++) {
-                    printf("%2d ", i);
-                    for (j = 0; j < n_cols ; j++) {
-                        printf("%d", board[i][j]);
-                    }
-                    printf("\n");
-                }
-                //SYNC MECHANISM
-                //IDList *aux = Clients;
-                //while (aux != NULL) {
-                //    printf("send+\n");
-                //    send(aux->socket, &msg, sizeof(msg), 0);
-                //    aux = aux->next;
-                //}
-            }
-
-            if (event.type == Event_ShownewFruits) {
-                //character_mov_msg msg;
-                // we get the data (created with the malloc)
-                Event_ShownewFruits_Data *data = event.user.data1;
-                paint_cherry(data->x1,data->y1);
-                paint_lemon(data->x2,data->y2);
-                printf("fruit in -%d y-%d\n", data->x1, data->y2);
-                printf("fruit in -%d y-%d\n", data->x2, data->y2);
-
-                //SYNC MECHANISM
-                //IDList *aux = Clients;
-                //while (aux != NULL) {
-                //    printf("send+\n");
-                //    send(aux->socket, &msg, sizeof(msg), 0);
-                //    aux = aux->next;
-                //}
-            }
-
             if (event.type == Event_Clean2Fruits) {
-                //character_mov_msg msg;
+                rec_object_msg msg_fruit1;
+                rec_object_msg msg_fruit2;
+
+                message m;
+                m.action=7;
+                m.size= sizeof(msg_fruit1);
                 // we get the data (created with the malloc)
                 Event_Clean2Fruits_Data *data = event.user.data1;
                 clear_place(data->x1,data->y1);
                 clear_place(data->x2,data->y2);
-                printf("clean fruit in -%d y-%d\n", data->x1, data->y2);
+                printf("clean fruit in -%d y-%d\n", data->x1, data->y1);
                 printf("clean fruit in -%d y-%d\n", data->x2, data->y2);
 
-                //SYNC MECHANISM
-                //IDList *aux = Clients;
-                //while (aux != NULL) {
-                //    printf("send+\n");
-                //    send(aux->socket, &msg, sizeof(msg), 0);
-                //    aux = aux->next;
-                //}
-            }
+                msg_fruit1.object=4;
+                msg_fruit1.x=data->x1;
+                msg_fruit1.y=data->y1;
 
-
-
-            if (event.type == Event_Inactivity) {
-                character_mov_msg msg;
-                // we get the data (created with the malloc)
-                Event_Inactivity_Data *data = event.user.data1;
-                clear_place(data->x_old, data->y_old);
-
-
-                x_character = data->x;
-                y_character = data->y;
-                rgb_r = data->r;
-                rgb_g = data->g;
-                rgb_b = data->b;
-
-
-                msg.character = data->character;
-                printf("%d\n", data->character);
-                msg.x = x_character;
-                msg.y = y_character;
-                msg.x_old = data->x_old;
-                msg.y_old = data->y_old;
-                msg.r = data->r;
-                msg.g = data->g;
-                msg.b = data->b;
-
-
-                // we paint a pacman
-                if (data->character == 1) {
-                    paint_pacman(x_character, y_character, rgb_r, rgb_g, rgb_b);
-                    printf("move pacman x-%d y-%d\n", x_character, y_character);
-                }
-                if (data->character == 2) {
-                    paint_pacman(x_character, y_character, rgb_r, rgb_g, rgb_b);
-                    printf("move super pacman x-%d y-%d\n", x_character, y_character);
-                }
-                if (data->character == 3) {
-                    paint_monster(x_character, y_character, rgb_r, rgb_g, rgb_b);
-                    printf("move monster x-%d y-%d\n", x_character, y_character);
-                }
+                msg_fruit2.object=5;
+                msg_fruit2.x=data->x2;
+                msg_fruit2.y=data->y2;
 
                 //SYNC MECHANISM
                 IDList *aux = Clients;
-
                 while (aux != NULL) {
-                    send(aux->socket, &msg, sizeof(msg), 0);
+                    send(aux->socket, &m, sizeof(message),0);
+                    send(aux->socket, &msg_fruit1, m.size, 0);
+
+                    send(aux->socket, &m, sizeof(message),0);
+                    send(aux->socket, &msg_fruit2, m.size, 0);
                     aux = aux->next;
                 }
             }
