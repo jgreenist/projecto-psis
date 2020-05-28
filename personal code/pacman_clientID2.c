@@ -547,9 +547,12 @@ int main(int argc, char* argv[]){
             }
             if(event.type == SDL_KEYDOWN) {
 
-                if (event.key.keysym.sym == SDLK_e ) {
+                if (event.key.keysym.sym == SDLK_w ) {
                     pacman_disconnect(sock_fd);
-                    exit(-1);
+                    printf("fim\n");
+                    close_board_windows();
+                    exit(0);
+
 
                 }
                 if (event.key.keysym.sym == SDLK_RIGHT ){
@@ -681,7 +684,7 @@ int main(int argc, char* argv[]){
 
         }
     }
-
+    pacman_disconnect(sock_fd);
     printf("fim\n");
     close_board_windows();
     exit(0);

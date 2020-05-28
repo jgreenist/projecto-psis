@@ -61,11 +61,11 @@ typedef struct Event_ShowFruit_Data{
 } Event_ShowFruit_Data;
 
 typedef struct Event_ShownewFruits_Data{
-    int x1,y1,x2,y2;
+    int fruit1,x1,y1,fruit2,x2,y2;
 } Event_ShownewFruits_Data;
 
 typedef struct Event_Clean2Fruits_Data{
-    int x1,y1,x2,y2;
+    int fruit1,x1,y1,fruit2,x2,y2;
 } Event_Clean2Fruits_Data;
 
 
@@ -3464,22 +3464,31 @@ void * clientThreadi(void * arg){
 
 
     //sync needed dont use board directly
-    int elem=set_initialpos(board, n_cols,n_lines);
-    if(elem<0){
+    int elem;
+    int elem1=set_initialpos(board, n_cols,n_lines);
+    if(elem1<0){
         printf("board is full \n");
+        close(sock_fd);
+        pthread_exit(NULL);
         //close thread and etc
     }
-    con_msg.xpac_ini=elem%n_cols;
-    con_msg.ypac_ini=elem/n_cols;
-    elem=set_initialpos(board, n_cols,n_lines);
-    if(elem<0){
+    con_msg.xpac_ini=elem1%n_cols;
+    con_msg.ypac_ini=elem1/n_cols;
+    board[elem1/n_cols][elem1%n_cols]=ID+10;
+
+    printf("ola\n");
+    int elem2=set_initialpos(board, n_cols,n_lines);
+    if(elem2<0){
         printf("board is full \n");
+        board[elem1/n_cols][elem1%n_cols]=0;
+        close(sock_fd);
+        pthread_exit(NULL);
         //close thread and etc
     }
-    con_msg.xm_ini=elem%n_cols;
-    con_msg.ym_ini=elem/n_cols;
-    board[con_msg.ypac_ini][con_msg.xpac_ini]=10+ID;
-    board[con_msg.ym_ini][con_msg.xm_ini]=-(10+ID);
+    printf("ola\n");
+    con_msg.xm_ini=elem2%n_cols;
+    con_msg.ym_ini=elem2/n_cols;
+    board[elem2/n_cols][elem2%n_cols]=-(10+ID);
     printf("initial pos, pacman: x %d,y%d monster: x %d,y%d \n",con_msg.xpac_ini,con_msg.ypac_ini,con_msg.xm_ini,con_msg.ym_ini);
 
     //sending board
@@ -3599,55 +3608,59 @@ void * clientThreadi(void * arg){
         event_data_newfruit = malloc(sizeof(Event_ShownewFruits_Data));
 
         pthread_t thr_fruit1,thr_fruit2;
+        event_data_newfruit->fruit1=0;
+        event_data_newfruit->fruit2=0;
 
         elem=set_initialpos(board, n_cols,n_lines);
         if(elem<0){
             printf("board is full \n");
-        }
-        board[elem/n_cols][elem%n_cols]=4;
-        event_data_newfruit->x1 =elem%n_cols;
-        event_data_newfruit->y1 =elem/n_cols;
+        }else{
+            board[elem/n_cols][elem%n_cols]=4;
+            event_data_newfruit->x1 =elem%n_cols;
+            event_data_newfruit->y1 =elem/n_cols;
+            event_data_newfruit->fruit1=4;
 
-        Cherry_list->fruit=4;
-        Cherry_list->x=elem%n_cols;
-        Cherry_list->y=elem/n_cols;
-        Cherry_list->next = NULL;
+            Cherry_list->fruit=4;
+            Cherry_list->x=elem%n_cols;
+            Cherry_list->y=elem/n_cols;
+            Cherry_list->next = NULL;
+
+            Fruits=insert_new_Fruit(Fruits,Cherry_list);
+            sem_init(&Cherry_list->sem_fruit1,0,0);
+            sem_init(&Cherry_list->sem_fruit2,0,0);
+
+            error = pthread_create(&thr_fruit1,NULL,thr_placefruit, Cherry_list);
+        }
+
 
         elem=set_initialpos(board, n_cols,n_lines);
         if(elem<0){
             printf("board is full \n");
+        }else {
+            //SYNC here
+            board[elem/n_cols][elem%n_cols]=5;
+            event_data_newfruit->x2=elem%n_cols;
+            event_data_newfruit->y2=elem/n_cols;
+            event_data_newfruit->fruit2=5;
+
+            //SYNC here
+            //add fruit lists
+            Lemon_list->fruit=5;
+            Lemon_list->x=elem%n_cols;
+            Lemon_list->y=elem/n_cols;
+            Lemon_list->next = NULL;
+
+            Fruits=insert_new_Fruit(Fruits,Lemon_list );
+            sem_init(&Lemon_list->sem_fruit1,0,0);
+            sem_init(&Lemon_list->sem_fruit2,0,0);
+
+            error = pthread_create(&thr_fruit2,NULL,thr_placefruit, Lemon_list);
         }
-        //SYNC here
-        board[elem/n_cols][elem%n_cols]=5;
-        event_data_newfruit->x2=elem%n_cols;
-        event_data_newfruit->y2=elem/n_cols;
-
-        //SYNC here
-        //add fruit lists
-        Lemon_list->fruit=5;
-        Lemon_list->x=elem%n_cols;
-        Lemon_list->y=elem/n_cols;
-        Lemon_list->next = NULL;
-
-
-        Fruits=insert_new_Fruit(Fruits,Cherry_list);
-        Fruits=insert_new_Fruit(Fruits,Lemon_list );
-
-        sem_init(&Cherry_list->sem_fruit1,0,0);
-        sem_init(&Cherry_list->sem_fruit2,0,0);
-        sem_init(&Lemon_list->sem_fruit1,0,0);
-        sem_init(&Lemon_list->sem_fruit2,0,0);
-
 
         SDL_zero(new_event);
         new_event.type = Event_ShownewFruits;
         new_event.user.data1 = event_data_newfruit;
         SDL_PushEvent(&new_event);
-
-        error = pthread_create(&thr_fruit1,NULL,thr_placefruit, Cherry_list);
-        error = pthread_create(&thr_fruit2,NULL,thr_placefruit, Lemon_list);
-
-
     }
 
 
@@ -3742,26 +3755,35 @@ void * clientThreadi(void * arg){
             //--------------needs to be done---------------//
             //Clean two fuits of the board if Clients!=NULL
             if(Clients!=NULL) {
+
                 Cherry_list = get_fruit_list(Fruits, 4);
                 Lemon_list = get_fruit_list(Fruits, 5);
+                event_data_cleanfruit->fruit1=0;
+                event_data_cleanfruit->fruit2=0;
+                if(Cherry_list!=NULL){
+                    board[Cherry_list->y][Cherry_list->x] = 0;
+                    event_data_cleanfruit->x1=Cherry_list->x;
+                    event_data_cleanfruit->y1=Cherry_list->y;
+                    event_data_cleanfruit->fruit1=4;
+                    Fruits =remove_fruit_list(Fruits, Cherry_list);
+                }
 
+                if(Lemon_list!=NULL){
+                    board[Lemon_list->y][Lemon_list->x] = 0;
+                    event_data_cleanfruit->x2=Lemon_list->x;
+                    event_data_cleanfruit->y2=Lemon_list->y;
+                    event_data_cleanfruit->fruit2=5;
+                    Fruits =remove_fruit_list(Fruits, Lemon_list);
+                }
                 //NEED SYNC HERE and free
-                board[Cherry_list->y][Cherry_list->x] = 0;
-                board[Lemon_list->y][Lemon_list->x] = 0;
-
-                event_data_cleanfruit->x1=Cherry_list->x;
-                event_data_cleanfruit->y1=Cherry_list->y;
-                event_data_cleanfruit->x2=Lemon_list->x;
-                event_data_cleanfruit->y2=Lemon_list->y;
 
                 SDL_zero(new_event);
                 new_event.type = Event_Clean2Fruits;
                 new_event.user.data1 = event_data_cleanfruit;
                 SDL_PushEvent(&new_event);
-
                 //NEED SYNC HERE and free
-                Fruits =remove_fruit_list(Fruits, Cherry_list);
-                Fruits =remove_fruit_list(Fruits, Lemon_list);
+
+
             }
 
             // send the event
@@ -3771,7 +3793,7 @@ void * clientThreadi(void * arg){
             SDL_PushEvent(&new_event);
 
             //clear semaphores
-            sem_destroy(&inactivity1.sem_inactivity);
+            error=sem_destroy(&inactivity1.sem_inactivity);
             sem_destroy(&inactivity3.sem_inactivity);
             sem_destroy(&arg_sem1.sem_nplay1);
             sem_destroy(&arg_sem1.sem_nplay2);
@@ -3782,11 +3804,8 @@ void * clientThreadi(void * arg){
             pthread_join(thr_nplayspersec1, NULL);
             pthread_join(thr_nplayspersec3, NULL);
 
-
-
-
             //clear socket
-            puts("client disconnected");
+            close(sock_fd);
             printf("%d %d\n", n_cols, n_lines);
             for ( i = 0 ; i < n_lines; i++){
                 printf("%2d ", i);
@@ -3795,7 +3814,6 @@ void * clientThreadi(void * arg){
                 }
                 printf("\n");
             }
-            close(sock_fd);
             pthread_exit(NULL);
         }
 
@@ -4241,25 +4259,34 @@ void * clientThreadi(void * arg){
     //--------------needs to be done---------------//
     //Clean two fuits of the board if Clients!=NULL
     if(Clients!=NULL) {
+
         Cherry_list = get_fruit_list(Fruits, 4);
         Lemon_list = get_fruit_list(Fruits, 5);
+        event_data_cleanfruit->fruit1=0;
+        event_data_cleanfruit->fruit2=0;
+        if(Cherry_list!=NULL){
+            board[Cherry_list->y][Cherry_list->x] = 0;
+            event_data_cleanfruit->x1=Cherry_list->x;
+            event_data_cleanfruit->y1=Cherry_list->y;
+            event_data_cleanfruit->fruit1=4;
+            Fruits =remove_fruit_list(Fruits, Cherry_list);
+        }
 
+        if(Lemon_list!=NULL){
+            board[Lemon_list->y][Lemon_list->x] = 0;
+            event_data_cleanfruit->x2=Lemon_list->x;
+            event_data_cleanfruit->y2=Lemon_list->y;
+            event_data_cleanfruit->fruit2=5;
+            Fruits =remove_fruit_list(Fruits, Lemon_list);
+        }
         //NEED SYNC HERE and free
-        board[Cherry_list->y][Cherry_list->x] = 0;
-        board[Lemon_list->y][Lemon_list->x] = 0;
-
-        event_data_cleanfruit->x1=Cherry_list->x;
-        event_data_cleanfruit->y1=Cherry_list->y;
-        event_data_cleanfruit->x2=Lemon_list->x;
-        event_data_cleanfruit->y2=Lemon_list->y;
 
         SDL_zero(new_event);
         new_event.type = Event_Clean2Fruits;
         new_event.user.data1 = event_data_cleanfruit;
         SDL_PushEvent(&new_event);
         //NEED SYNC HERE and free
-        Fruits =remove_fruit_list(Fruits, Cherry_list);
-        Fruits =remove_fruit_list(Fruits, Lemon_list);
+
 
     }
 
@@ -4406,36 +4433,41 @@ int main(int argc , char* argv[]){
         exit(-1);
     }
 
-    if(fscanf(fp,"%d %d %*d", &n_cols, &n_lines)!=2) {
+    if(fscanf(fp,"%d %d%*c", &n_cols, &n_lines)!=2) {
         printf("Error reading board  file\n");
         exit(-1);
     }
 
     create_board_window(n_cols, n_lines);
-
-    char read_object;
-    board =(int **) malloc(sizeof(int *) * (n_lines));
-    for ( i = 0 ; i < n_lines; i++){
-        board[i]=(int *)malloc(sizeof(int) * (n_cols));
-        for (j = 0; j < n_cols+1; j++){
-
-
-            fscanf(fp,"%c", &read_object);
-            if(read_object=='B'){
-                paint_brick(j, i);
-                board[i][j]=1;
-            } else if(read_object==' '){
-                board[i][j] = 0;
-            }else {
-
-            }
-        }
-    }
     printf("board size, n_col: %d, n_lines: %d\n", n_cols, n_lines);
     if(n_cols<2 ||n_lines<2){
         printf("Error board is to small\n");
         exit(-1);
     }
+
+    char read_object;
+    board =(int **) malloc(sizeof(int *) * (n_lines));
+    for ( i = 0 ; i < n_lines; i++) {
+        board[i]=(int *)malloc(sizeof(int) * (n_cols));
+    }
+
+    for ( i = 0 ; i < n_lines; i++){
+        for (j = 0; j < n_cols+1; j++){
+
+            fscanf(fp,"%c", &read_object);
+            if(read_object=='B'){
+                paint_brick(j, i);
+                board[i][j]=1;
+            } else if(read_object==' ') {
+                board[i][j] = 0;
+            } else if(read_object=='\n'){
+                continue;
+            }else {
+                continue;
+            }
+        }
+    }
+
     for ( i = 0 ; i < n_lines; i++){
         printf("%2d ", i);
         for ( j = 0 ; j < n_cols; j++) {
@@ -4644,12 +4676,16 @@ int main(int argc , char* argv[]){
                 //SYNC MECHANISM
                 IDList *aux = Clients;
                 while (aux != NULL) {
-                    send(aux->socket, &m, sizeof(message),0);
-                    send(aux->socket, &msg_fruit1, m.size, 0);
-
-                    send(aux->socket, &m, sizeof(message),0);
-                    send(aux->socket, &msg_fruit2, m.size, 0);
+                    if(data->fruit1==4) {
+                        send(aux->socket, &m, sizeof(message), 0);
+                        send(aux->socket, &msg_fruit1, m.size, 0);
+                    }
+                    if(data->fruit2==5) {
+                        send(aux->socket, &m, sizeof(message), 0);
+                        send(aux->socket, &msg_fruit2, m.size, 0);
+                    }
                     aux = aux->next;
+
                 }
             }
 
@@ -4800,11 +4836,14 @@ int main(int argc , char* argv[]){
                 //SYNC MECHANISM
                 IDList *aux = Clients;
                 while (aux != NULL) {
-                    send(aux->socket, &m, sizeof(message),0);
-                    send(aux->socket, &msg_fruit1, m.size, 0);
-
-                    send(aux->socket, &m, sizeof(message),0);
-                    send(aux->socket, &msg_fruit2, m.size, 0);
+                    if(data->fruit1==4) {
+                        send(aux->socket, &m, sizeof(message), 0);
+                        send(aux->socket, &msg_fruit1, m.size, 0);
+                    }
+                    if(data->fruit2==5) {
+                        send(aux->socket, &m, sizeof(message), 0);
+                        send(aux->socket, &msg_fruit2, m.size, 0);
+                    }
                     aux = aux->next;
                 }
             }

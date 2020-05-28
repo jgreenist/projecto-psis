@@ -33,20 +33,29 @@ int set_initialpos(int **board, int n_col,int n_lin){
             }
         }
     }
-    if(emptyspaces<2){
-        return -1;
-    }
-    random_entry = (rand()%(emptyspaces-1));
-    printf("random entry: %d\n",random_entry);
-    printf("number of empty spaces: %d\n",emptyspaces);
-    emptyspaces=0;
-    for(i=0;i<n_lin;i++){
-        for (j = 0; j <n_col ; j++){
-            if(board[i][j]==0){
-                if(random_entry==emptyspaces){
-                    return i*n_col+j;
+    if(emptyspaces==1){
+        for(i=0;i<n_lin;i++){
+            for (j = 0; j <n_col ; j++){
+                if(board[i][j]==0) {
+                    return i * n_col + j;
                 }
-                emptyspaces++;
+            }
+        }
+    }else if(emptyspaces==0){
+        return -1;
+    } else {
+        random_entry = (rand() % (emptyspaces - 1));
+        printf("random entry: %d\n", random_entry);
+        printf("number of empty spaces: %d\n", emptyspaces);
+        emptyspaces = 0;
+        for (i = 0; i < n_lin; i++) {
+            for (j = 0; j < n_col; j++) {
+                if (board[i][j] == 0) {
+                    if (random_entry == emptyspaces) {
+                        return i * n_col + j;
+                    }
+                    emptyspaces++;
+                }
             }
         }
     }
