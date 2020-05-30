@@ -16,13 +16,37 @@
 #include "pac_func.h"
 
 //----------------------------------------------------------//
-//Thread responsible for receiving messages from each player//
-//----------------and deal with initial protocol------------//
+//----------Global variables needed-------------------------//
+//----------------------------------------------------------//
 IDList *Clients;
 Fruits_Struct *Fruits;
 int ** board;
+
+//locks need to make sync operations
+//1- for Client;
+pthread_mutex_t mux_Clients;
+
+
+
+//1- for Fruits;
+pthread_mutex_t mux_Fruits;
+
+
+//#n_col*n_lin-for board;
+pthread_mutex_t * mux_board;
+pthread_mutex_t   mux_board_total;
+
+
+
+//Only write in the begging and the only read operations//
 int n_cols;
 int n_lines;
+
+
+
+//----------------------------------------------------------//
+//----------------Variables to send data to SDL-------------//
+//----------------------------------------------------------//
 
 Uint32 Event_ShowCharacter;
 Uint32 Event_Change2Characters;
@@ -33,9 +57,6 @@ Uint32 Event_ShowFruit;
 Uint32 Event_ShownewFruits;
 Uint32 Event_Clean2Fruits;
 
-//----------------------------------------------------------//
-//Thread responsible for receiving messages from each player//
-//----------------and deal with initial protocol------------//
 typedef struct Event_ShowCharacter_Data{
     int character,ID,x,y,x_old,y_old,r,g,b;
 } Event_ShowCharacter_Data;
@@ -3420,10 +3441,583 @@ valid_move check_move(IDList *Clients, int x_new, int y_new,int x_old, int y_old
 }
 
 
-//----------------------------------------------------------//
-//Thread responsible for receiving messages from each player//
-//----------------and deal with initial protocol------------//
+//---------- no rebound move ----//
+/*
+valid_move check_move_pacman_norebound(valid_move,board){
 
+
+    if (board[y_new][x_new] == 4){
+        board[y_new][x_new] = 10 + ID+1;
+        validity_move.new_x1 = x_new;
+        validity_move.new_y1 = y_new;
+        board[y_old][x_old]=0;
+
+        validity_move.flag_newfruit = 1;
+        validity_move.valid = 1;
+    }else if (board[y_new][x_new] == 5){
+        board[y_new][x_new] = 10 + ID+1;
+        validity_move.new_x1 = x_new;
+        validity_move.new_y1 = y_new;
+        board[y_old][x_old]=0;
+
+        validity_move.flag_newfruit = 2;
+        validity_move.valid = 1;
+    }else if (board[y_new][x_new] > 10) {
+        //printf("board[y_new][x_new]:%d\n",board[y_new][x_new]);
+        ID_other = board[y_new][x_new] - 10;
+        board[y_old][x_old] = board[y_new][x_new];
+        board[y_new][x_new] = 10 + ID;
+
+        validity_move.flag2player = 1;
+        validity_move.new_x2 = x_old;
+        validity_move.new_y2 = y_old;
+        if (ID_other % 2 == 0) {
+            validity_move.character2 = 2;
+            validity_move.other_ID=ID_other-1;
+
+            other_list = get_IDlist(Clients, ID_other - 1);
+            other_list->xp=x_old;
+            other_list->yp=y_old;
+
+        } else {
+            validity_move.character2 = 1;
+            validity_move.other_ID=ID_other;
+
+            other_list = get_IDlist(Clients, ID_other);
+            other_list->xp=x_old;
+            other_list->yp=y_old;
+        }
+        validity_move.other_rgb_r = other_list->rgb_r;
+        validity_move.other_rgb_g = other_list->rgb_g;
+        validity_move.other_rgb_b = other_list->rgb_b;
+        validity_move.new_x1 = x_new;
+        validity_move.new_y1 = y_new;
+        validity_move.valid = 1;
+    }else if (board[y_new][x_new] == -(ID + 10)) {
+        board[y_old][x_old] = board[y_new][x_new];
+        board[y_new][x_new] = ID + 10;
+
+        validity_move.flag2player = 2;
+        validity_move.character2 = 3;
+        validity_move.new_x2 = x_old;
+        validity_move.new_y2 = y_old;
+        validity_move.new_x1 = x_new;
+        validity_move.new_y1 = y_new;
+        validity_move.valid = 1;
+
+
+    }else if (board[y_new][x_new] <-10) {
+        board[y_old][x_old] = 0;
+        validity_move.character2=3;
+        validity_move.new_x2=x_new;
+        validity_move.new_y2=y_new;
+        elem=set_initialpos(board, n_cols,n_lines);
+        x_new =elem%n_cols;
+        y_new =elem/n_cols;
+
+        board[y_new][x_new] = ID + 10;
+
+        validity_move.flag2player = 0;
+        validity_move.new_x1 = x_new;
+        validity_move.new_y1 = y_new;
+        validity_move.valid = 1;
+
+
+    }
+
+}
+
+valid_move check_move_superpacman_norebound(valid_move,board) {
+
+    if (board[y_new][x_new] == 4){
+        if(superpower==2){
+            board[y_new][x_new] = 10 + ID;
+        }else{
+            board[y_new][x_new] = 10 + ID+1;
+        }
+        validity_move.new_x1 = x_new;
+        validity_move.new_y1 = y_new;
+        board[y_old][x_old]=0;
+
+        validity_move.flag_newfruit = 1;
+        validity_move.valid = 1;
+    }else if (board[y_new][x_new] == 5){
+        if(superpower==2){
+            board[y_new][x_new] = 10 + ID;
+        }else{
+            board[y_new][x_new] = 10 + ID+1;
+        }
+        validity_move.new_x1 = x_new;
+        validity_move.new_y1 = y_new;
+        board[y_old][x_old]=0;
+
+        validity_move.flag_newfruit = 2;
+        validity_move.valid = 1;
+    }else if (board[y_new][x_new] > 10) {
+        //printf("board[y_new][x_new]:%d\n",board[y_new][x_new]);
+        ID_other = board[y_new][x_new] - 10;
+        board[y_old][x_old] = board[y_new][x_new];
+        board[y_new][x_new] = 10 + ID+1;
+
+        validity_move.flag2player = 1;
+        validity_move.new_x2 = x_old;
+        validity_move.new_y2 = y_old;
+        if (ID_other % 2 == 0) {
+            validity_move.character2 = 2;
+            validity_move.other_ID=ID_other-1;
+
+            other_list = get_IDlist(Clients, ID_other - 1);
+            other_list->xp=x_old;
+            other_list->yp=y_old;
+
+        } else {
+            validity_move.character2 = 1;
+            validity_move.other_ID=ID_other;
+
+            other_list = get_IDlist(Clients, ID_other);
+            other_list->xp=x_old;
+            other_list->yp=y_old;
+        }
+        validity_move.other_rgb_r = other_list->rgb_r;
+        validity_move.other_rgb_g = other_list->rgb_g;
+        validity_move.other_rgb_b = other_list->rgb_b;
+        validity_move.new_x1 = x_new;
+        validity_move.new_y1 = y_new;
+        validity_move.valid = 1;
+    }else if (board[y_new][x_new] == -(ID + 10)) {
+        board[y_old][x_old] = board[y_new][x_new];
+        board[y_new][x_new] = ID + 10+1;
+
+        validity_move.flag2player = 2;
+        validity_move.character2 = 3;
+        validity_move.new_x2 = x_old;
+        validity_move.new_y2 = y_old;
+        validity_move.new_x1 = x_new;
+        validity_move.new_y1 = y_new;
+        validity_move.valid = 1;
+
+
+    }else if (board[y_new][x_new] < -10) {
+
+        //monster and eats it
+        ID_other = (-board[y_new][x_new])-10 ;
+        board[y_old][x_old] = 0;
+        board[y_new][x_new] = 10 + ID+1;
+        validity_move.flag2player = 3;
+        validity_move.character2 = 3;
+
+        elem = set_initialpos(board, n_cols, n_lines);
+
+        board[elem / n_cols][elem % n_cols] = -(10 + ID_other);
+        validity_move.new_x2 = elem % n_cols;
+        validity_move.new_y2 = elem / n_cols;
+        other_list = get_IDlist(Clients, ID_other);
+        other_list->xm = elem % n_cols;
+        other_list->ym = elem / n_cols;
+
+        validity_move.other_rgb_r = other_list->rgb_r;
+        validity_move.other_rgb_g = other_list->rgb_g;
+        validity_move.other_rgb_b = other_list->rgb_b;
+        validity_move.other_ID=ID_other;
+        validity_move.new_x1 = x_new;
+        validity_move.new_y1 = y_new;
+        validity_move.valid = 1;
+
+
+    }
+}
+
+}
+
+valid_move check_move_monster_norebound(valid_move,board){
+
+    if (board[y_new][x_new] == 4){
+        board[y_new][x_new] = -(10 + ID);
+        validity_move.new_x1 = x_new;
+        validity_move.new_y1 = y_new;
+        board[y_old][x_old]=0;
+
+        validity_move.flag_newfruit = 1;
+        validity_move.valid = 1;
+
+    }else if (board[y_new][x_new] == 5){
+        board[y_new][x_new] = -(10 + ID);
+        validity_move.new_x1 = x_new;
+        validity_move.new_y1 = y_new;
+        board[y_old][x_old]=0;
+
+        validity_move.flag_newfruit = 2;
+        validity_move.valid = 1;
+    } else if (board[y_new][x_new] < -10) {
+        ID_other = (-10) - (board[y_new][x_new]);
+        board[y_old][x_old] = board[y_new][x_new];
+        board[y_new][x_new] = -(10 + ID);
+        validity_move.flag2player = 1;
+        validity_move.character2 = 3;
+        validity_move.new_x2 = x_old;
+        validity_move.new_y2 = y_old;
+        validity_move.other_ID=ID_other;
+
+        other_list = get_IDlist(Clients, ID_other);
+        other_list->xm=x_old;
+        other_list->ym=y_old;
+
+        validity_move.other_rgb_r = other_list->rgb_r;
+        validity_move.other_rgb_g = other_list->rgb_g;
+        validity_move.other_rgb_b = other_list->rgb_b;
+        validity_move.new_x1 = x_new;
+        validity_move.new_y1 = y_new;
+        validity_move.valid = 1;
+        //monster of another player
+    } else if (board[y_new][x_new] == (ID + 10)) {
+        //the pacman of the same player
+        board[y_old][x_old] = board[y_new][x_new];
+        board[y_new][x_new] = -(ID + 10);
+        validity_move.flag2player = 2;
+        validity_move.character2 = 1;
+        validity_move.new_x2 = x_old;
+        validity_move.new_y2 = y_old;
+        validity_move.new_x1 = x_new;
+        validity_move.new_y1 = y_new;
+        validity_move.valid = 1;
+    }else if (board[y_new][x_new] == (ID + 10+1)) {
+        //the pacman of the same player
+        board[y_old][x_old] = board[y_new][x_new];
+        board[y_new][x_new] = -(ID + 10);
+        validity_move.flag2player = 2;
+        validity_move.character2 = 2;
+        validity_move.new_x2 = x_old;
+        validity_move.new_y2 = y_old;
+        validity_move.new_x1 = x_new;
+        validity_move.new_y1 = y_new;
+        validity_move.valid = 1;
+    }else if (board[y_new][x_new] >10) {
+        if(board[y_new][x_new]%2==0){
+            ID_other = board[y_new][x_new]-10-1;
+            other_list = get_IDlist(Clients, ID_other);
+            validity_move.other_rgb_r = other_list->rgb_r;
+            validity_move.other_rgb_g = other_list->rgb_g;
+            validity_move.other_rgb_b = other_list->rgb_b;
+            validity_move.new_x2=other_list->xp;
+            validity_move.new_y2=other_list->yp;
+            validity_move.other_ID=ID_other;
+
+            //superpowerpacman
+            //gets eaten
+            board[y_old][x_old] = 0;
+            elem=set_initialpos(board, n_cols,n_lines);
+            x_new =elem%n_cols;
+            y_new =elem/n_cols;
+
+
+            board[y_new][x_new] = -(ID + 10);
+            validity_move.flag2player = 4;
+            validity_move.new_x1 = x_new;
+            validity_move.new_y1 = y_new;
+            validity_move.valid = 1;
+
+        }else {
+            //pacman
+            // eats it
+            ID_other = board[y_new][x_new] - 10;
+            board[y_old][x_old] = 0;
+            board[y_new][x_new] = -(10 + ID);
+            validity_move.flag2player = 1;
+            validity_move.character2 = 1;
+
+            elem = set_initialpos(board, n_cols, n_lines);
+
+            board[elem / n_cols][elem % n_cols] = (10 + ID_other);
+            validity_move.new_x2 = elem % n_cols;
+            validity_move.new_y2 = elem / n_cols;
+            validity_move.other_ID=ID_other;
+            other_list = get_IDlist(Clients, ID_other);
+            other_list->xp = elem % n_cols;
+            other_list->yp = elem / n_cols;
+
+            validity_move.other_rgb_r = other_list->rgb_r;
+            validity_move.other_rgb_g = other_list->rgb_g;
+            validity_move.other_rgb_b = other_list->rgb_b;
+            validity_move.new_x1 = x_new;
+            validity_move.new_y1 = y_new;
+            validity_move.valid = 1;
+        }
+    }
+}
+
+valid_move check_move2(IDList *Clients, int x_new, int y_new,int x_old, int y_old, int character, int ID, int superpower) {
+    int elem;
+    valid_move validity_move;
+    validity_move.valid = 0;
+    validity_move.flag2player = 0;
+    validity_move.flag_newfruit = 0;
+    validity_move.character2 = 0;
+    validity_move.new_x1 = 0;
+    validity_move.new_y1 = 0;
+    validity_move.new_x2 = 0;
+    validity_move.new_y2 = 0;
+    validity_move.other_rgb_r = 0;
+    validity_move.other_rgb_b = 0;
+    validity_move.other_rgb_b = 0;
+    validity_move.other_ID = 0;
+
+    int ID_other;
+    IDList *other_list;
+    if (((x_new - 1 == x_old || x_new + 1 == x_old) && y_new == y_old) ||((y_new - 1 == y_old || y_new + 1 == y_old) && x_new == x_old)) {
+
+        if (character == 1) {
+            //valid
+            validity_move.character1=1;
+
+            if (x_new > (n_cols - 1)) {
+                x_new=n_cols-2;
+
+
+            }else if (x_new < 0) {
+                x_new=1;
+
+
+            }else if (y_new > (n_lines - 1)){
+                y_new=n_lines-2;
+
+
+            }else if (y_new < 0){
+                y_new=1;
+
+
+            } else if (x_new != x_old) {
+                if (x_new > x_old && board[y_new][x_new] != 0) {
+                    if (board[y_new][x_new] == 1) {
+                        if (x_new - 2 >= 0) {
+
+
+                        }
+                    }
+                } else if (x_new < x_old && board[y_new][x_new] != 0) {
+                    if (board[y_new][x_new] == 1) {
+                        if(x_new + 2 <= n_cols - 1) {
+
+
+                        }
+                    }
+                }else{
+                    validity_move.new_y1 = y_new;
+                    validity_move.new_x1 = x_new;
+                    board[y_old][x_old]=0;
+                    board[y_new][x_new]=(ID+10);
+                    validity_move.valid=1;
+                }
+
+            }else if (y_new != y_old) {
+                if (y_new > y_old && board[y_new][x_new] != 0) {
+                    if (board[y_new][x_new] == 1) {
+                        if (y_new - 2 >= 0) {
+
+
+                        }
+                    }
+                }
+                else if (y_new < y_old && board[y_new][x_new] != 0) {
+                    if (board[y_new][x_new] == 1) {
+                        if(y_new + 2 <= n_lines - 1) {
+
+
+                        }
+                }else{
+                    validity_move.new_y1 = y_new;
+                    validity_move.new_x1 = x_new;
+                    board[y_new][x_new]=(ID+10);
+                    board[y_old][x_old]=0;
+                    validity_move.valid=1;
+                }
+            }
+            return validity_move;
+        }
+            //-------------------------------------------------------------------------------//
+
+            //-------------------------------------------------------------------------------//
+
+            //-------------------------------------------------------------------------------//
+
+        else if (character == 2){
+            //valid
+            validity_move.character1=2;
+
+            if (x_new > (n_cols - 1)) {
+
+            }else if (x_new < 0) {
+
+            }
+            else if (y_new > (n_lines - 1)){
+
+            }else if (y_new < 0) {
+
+
+            }else if (x_new != x_old) {
+                if (x_new > x_old && board[y_new][x_new] != 0) {
+                    if (board[y_new][x_new] == 1) {
+                        if(x_new - 2 >= 0) {
+
+
+                        }else {
+                            validity_move.new_y1 = y_old;
+                            validity_move.new_x1 = x_new;
+
+                            board[validity_move.new_y1][validity_move.new_x1] = (ID + 10) + 1;
+                            validity_move.valid = 1;
+                        }
+                } else if (x_new < x_old && board[y_new][x_new] != 0) {
+                    if (board[y_new][x_new] == 1) {
+                        if(x_new + 2 <= n_cols - 1) {
+
+
+                        }else {
+                            validity_move.new_y1 = y_old;
+                            validity_move.new_x1 = x_new;
+
+                            board[validity_move.new_y1][validity_move.new_x1] = (ID + 10) + 1;
+                            validity_move.valid = 1;
+                        }
+                    }
+                }else{
+                    validity_move.new_y1 = y_new;
+                    validity_move.new_x1 = x_new;
+                    board[y_old][x_old]=0;
+                    board[y_new][x_new]=(ID+10)+1;
+                    validity_move.valid=1;
+                }
+            }else if (y_new != y_old) {
+                if (y_new > y_old && board[y_new][x_new] != 0) {
+                    if (board[y_new][x_new] == 1) {
+                        if(y_new - 2 >= 0) {
+
+
+                        }else {
+                            validity_move.new_y1 = y_old;
+                            validity_move.new_x1 = x_new;
+
+                            board[validity_move.new_y1][validity_move.new_x1] = (ID + 10) + 1;
+                            validity_move.valid = 1;
+                        }
+                    }
+                }
+                else if (y_new < y_old && board[y_new][x_new] != 0) {
+                    if (board[y_new][x_new] == 1) {
+                        if(y_new + 2 <= n_lines - 1) {
+
+
+                        }else {
+                            validity_move.new_y1 = y_old;
+                            validity_move.new_x1 = x_new;
+
+                            board[validity_move.new_y1][validity_move.new_x1] = (ID + 10) + 1;
+                            validity_move.valid = 1;
+                        }
+                    }
+                }else{
+                    validity_move.new_y1 = y_new;
+                    validity_move.new_x1 = x_new;
+                    board[y_new][x_new]=(ID+10)+1;
+                    board[y_old][x_old]=0;
+                    validity_move.valid=1;
+                }
+            }
+            return validity_move;
+        }
+            //-------------------------------------------------------------------------------//
+
+            //-------------------------------------------------------------------------------//
+
+            //-------------------------------------------------------------------------------//
+
+        else if (character == 3) {
+            validity_move.character1 = 3;
+
+            if (x_new > (n_cols - 1)) {
+
+            } else if (x_new < 0) {
+
+            } else if (y_new > (n_lines - 1)) {
+
+            } else if (y_new < 0) {
+
+            } else if (x_new != x_old) {
+                if (x_new > x_old && board[y_new][x_new] != 0) {
+                    if (board[y_new][x_new] == 1) {
+                        if(x_new - 2 >= 0){
+
+
+                        }else {
+                            validity_move.new_x1 = x_old;
+                            validity_move.new_y1 = y_new;
+
+                            board[validity_move.new_y1][validity_move.new_x1] = -(ID + 10);
+                            validity_move.valid = 1;
+                        }
+                    }
+                } else if (x_new < x_old && board[y_new][x_new] != 0) {
+                    if (board[y_new][x_new] == 1) {
+                        if(x_new + 2 <= n_cols - 1) {
+
+
+                        }else {
+                            validity_move.new_x1 = x_old;
+                            validity_move.new_y1 = y_new;
+
+                            board[validity_move.new_y1][validity_move.new_x1] = -(ID + 10);
+                            validity_move.valid = 1;
+                        }
+                    }
+                } else {
+                    validity_move.new_y1 = y_new;
+                    validity_move.new_x1 = x_new;
+                    board[y_old][x_old] = 0;
+                    board[y_new][x_new] = -(ID + 10);
+                    validity_move.valid = 1;
+                }
+            } else if (y_new != y_old) {
+                if (y_new > y_old && board[y_new][x_new] != 0) {
+                    if (board[y_new][x_new] == 1) {
+                        if(y_new - 2 >= 0) {
+
+
+                        }else {
+                            validity_move.new_y1 = y_old;
+                            validity_move.new_x1 = x_new;
+
+                            board[validity_move.new_y1][validity_move.new_x1] = -(ID + 10);
+                            validity_move.valid = 1;
+                        }
+                    }
+                } else if (y_new < y_old && board[y_new][x_new] != 0) {
+                    if (board[y_new][x_new] == 1) {
+                        if(y_new + 2 <= n_lines - 1) {
+
+
+                        }else {
+                            validity_move.new_y1 = y_old;
+                            validity_move.new_x1 = x_new;
+
+                            board[validity_move.new_y1][validity_move.new_x1] = -(ID + 10);
+                            validity_move.valid = 1;
+                        }
+                    }
+                } else {
+                    validity_move.new_y1 = y_new;
+                    validity_move.new_x1 = x_new;
+                    board[y_new][x_new] = -(ID + 10);
+                    board[y_old][x_old] = 0;
+                    validity_move.valid = 1;
+                }
+            }
+            return validity_move;
+        }
+    }
+    validity_move.valid = 0;
+    return validity_move;
+}
+
+*/
 
 void * clientThreadi(void * arg){
     struct threadclient_arg *my_arg = (struct threadclient_arg *)arg;
@@ -3437,21 +4031,50 @@ void * clientThreadi(void * arg){
     message m;
     int err_rcv;
     err_rcv = recv(sock_fd, &m , sizeof(m), 0);
+    //---------------------------------------------------------------//
+    //----------------------check message ---------------------------//
+    //---------------------------------------------------------------//
     if (err_rcv<0){
         perror("Error in reading: ");
-        exit(-1);
+        close(sock_fd);
+        pthread_exit(NULL);
     }
+
+    if(m.action!=1){
+        printf("invalid action\n");
+        close(sock_fd);
+        pthread_exit(NULL);;
+    }if(m.size!= sizeof(colour_msg)){
+        printf("invalid size of message\n");
+        close(sock_fd);
+        pthread_exit(NULL);
+    }
+    //---------------------------------------------------------------//
+    //---------------------------------------------------------------//
 
 
     colour_msg msg_colour;
     err_rcv = recv(sock_fd, &msg_colour , m.size, 0);
+    //---------------------------------------------------------------//
+    //----------------------check message ---------------------------//
+    //---------------------------------------------------------------//
     if (err_rcv<0){
         perror("Error in reading: ");
-        exit(-1);
+        close(sock_fd);
+        pthread_exit(NULL);
     }
+    if(msg_colour.r<0 || msg_colour.g<0 || msg_colour.b<0 ){
+        printf("invalid colour code\n");
+        close(sock_fd);
+        pthread_exit(NULL);
+    }
+    //---------------------------------------------------------------//
+    //---------------------------------------------------------------//
     int rgb_r=msg_colour.r;
     int rgb_g=msg_colour.g;
     int rgb_b=msg_colour.b;
+
+
     //----------------------------------------------------------------------------------------------------------//
     //------------------------------sending board size and sending initial position-----------------------------//
     //----------------------------------------------------------------------------------------------------------//
@@ -3476,7 +4099,6 @@ void * clientThreadi(void * arg){
     con_msg.ypac_ini=elem1/n_cols;
     board[elem1/n_cols][elem1%n_cols]=ID+10;
 
-    printf("ola\n");
     int elem2=set_initialpos(board, n_cols,n_lines);
     if(elem2<0){
         printf("board is full \n");
@@ -3485,7 +4107,7 @@ void * clientThreadi(void * arg){
         pthread_exit(NULL);
         //close thread and etc
     }
-    printf("ola\n");
+
     con_msg.xm_ini=elem2%n_cols;
     con_msg.ym_ini=elem2/n_cols;
     board[elem2/n_cols][elem2%n_cols]=-(10+ID);
@@ -3517,16 +4139,23 @@ void * clientThreadi(void * arg){
     }
     con_msg.n_entries_of_client_array=size;
     send_list_array = (int *)malloc(sizeof(int)*size*4);
-    i=0;
+
     send_list=Clients;
+    i=0;
     while(send_list!=NULL){
-        send_list_array[i]=send_list->ID;
-        send_list_array[i+1]=send_list->rgb_r;
-        send_list_array[i+2]=send_list->rgb_g;
-        send_list_array[i+3]=send_list->rgb_b;
+        printf("client list entry1: %d \n", send_list->ID);
+        send_list_array[i*4]=send_list->ID;
+        send_list_array[i*4+1]=send_list->rgb_r;
+        send_list_array[i*4+2]=send_list->rgb_g;
+        send_list_array[i*4+3]=send_list->rgb_b;
         i++;
-        send_list=get_next_ID(send_list);
+        send_list=send_list->next;
     }
+    int k;
+    for ( k = 0 ; k < con_msg.n_entries_of_client_array; k++){
+        printf("client list entry: %2d \n", send_list_array[k*4]+10);
+    }
+
 
     m.action=10;
     m.size= sizeof(con_msg);
@@ -3737,7 +4366,21 @@ void * clientThreadi(void * arg){
     //-------------------------------------------------------//
 
     while((err_rcv=recv(sock_fd, &m, sizeof(m),0))>0){
+        //---------------------------------------------------------------//
+        //----------------------check message ---------------------------//
+        //---------------------------------------------------------------//
 
+        if(m.action<2 || m.action>9){
+            printf("invalid action\n");
+            break;
+        }
+        if(m.size!= sizeof(msg_pos)){
+            printf("invalid message size\n");
+            break;
+        }
+
+        //---------------------------------------------------------------//
+        //---------------------------------------------------------------//
         if(m.action==9){
 
             //NEED SYNC HERE
@@ -3816,9 +4459,30 @@ void * clientThreadi(void * arg){
             }
             pthread_exit(NULL);
         }
-
+        //---------------------------------------------------------------//
+        //----------------------check message ---------------------------//
+        //---------------------------------------------------------------//
 
         err_rcv = recv(sock_fd, &msg_pos, sizeof(msg_pos), 0);
+        if(msg_pos.ID!=ID){
+            printf("invalid action\n");
+            break;
+        }
+        if(msg_pos.character==1 || msg_pos.character==3){
+            printf("valid character\n");
+        }else{
+            printf("invalid character\n");
+            continue;
+        }
+        if(msg_pos.x<-1 || msg_pos.x>n_cols || msg_pos.y<-1|| msg_pos.y>n_lines){
+            printf("outside of board\n");
+            continue;
+        }
+
+        //---------------------------------------------------------------//
+        //---------------------------------------------------------------//
+
+
         printf("cycle receiving %d byte %d %d %d\n", err_rcv, msg_pos.character, msg_pos.x, msg_pos.y);
         x_new = msg_pos.x;
         y_new = msg_pos.y;
@@ -3850,6 +4514,7 @@ void * clientThreadi(void * arg){
                     if(this_client->superpower>0){
                         character=2;
                     }
+
                     validity_move = check_move(Clients, x_new, y_new, x_old, y_old, character, ID, this_client->superpower);
 
                     if (validity_move.valid == 1 && (validity_move.character1 == 1 || validity_move.character1 == 2)) {
@@ -4480,6 +5145,32 @@ int main(int argc , char* argv[]){
     fclose(fp);
 
     //------------------------------------------------//
+    //-----------------create mutex-------------------//
+    //------------------------------------------------//
+    /*
+    if( pthread_mutex_init(&mux_Clients, NULL)!=0){
+        exit(-1);
+    }
+
+    if( pthread_mutex_init(&mux_Fruits, NULL)!=0) {
+        exit(-1);
+    }
+    if( pthread_mutex_init(&mux_board_total, NULL)!=0){
+        exit(-1);
+    }
+    mux_board = (pthread_mutex_t *)malloc(sizeof(pthread_mutex_t)*(n_cols+2)*(n_lines+2));
+    for ( i = 0 ; i < n_lines+2; i++){
+        for ( j = 0 ; j < n_cols+2; j++) {
+            if( pthread_mutex_init(&mux_board[i*(n_cols+2)+j], NULL)!=0){
+                exit(-1);
+            }
+        }
+
+    }
+    */
+
+
+    //------------------------------------------------//
     // create thread responsible to accept connection //
     //------------------------------------------------//
 
@@ -4488,14 +5179,14 @@ int main(int argc , char* argv[]){
     pthread_t thread_score;
     // create thread Accept
     struct sockaddr_in server_local_addr;
-    server_socket = socket(AF_INET, SOCK_STREAM, 0);
+    server_socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (server_socket == -1){
         perror("socket: ");
         exit(-1);
     }
     server_local_addr.sin_family = AF_INET;
-    server_local_addr.sin_addr.s_addr = INADDR_ANY;
-    server_local_addr.sin_port = htons(3000);
+    server_local_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+    server_local_addr.sin_port = htons(50000);
     err = bind(server_socket, (struct sockaddr *)&server_local_addr,sizeof(server_local_addr));
     if(err == -1) {
         perror("bind");

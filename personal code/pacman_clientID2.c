@@ -63,7 +63,7 @@ connection_data pacman_connection(char *address, int port_number,int rgb_r,int r
 
     int sock_fd;
     struct sockaddr_in server_addr;
-    sock_fd=socket(AF_INET, SOCK_STREAM,0);
+    sock_fd=socket(AF_INET, SOCK_STREAM,IPPROTO_TCP);
     if (sock_fd==-1){
         perror("socket: ");
         data.error=-1;
@@ -169,12 +169,30 @@ connection_data pacman_connection(char *address, int port_number,int rgb_r,int r
     printf("%d %d \n",con_msg.xm_ini,con_msg.ym_ini);
     printf("%d %d \n",con_msg.xpac_ini,con_msg.ypac_ini);
 
+    for ( i = 0 ; i < con_msg.n_lin; i++){
+        printf("%2d ", i);
+        for ( j = 0 ; j < con_msg.n_col; j++) {
+            printf("%d", send_board[i*con_msg.n_col+j]);
+        }
+        printf("\n");
+    }
+
+
     int k;
+    for ( k = 0 ; k < con_msg.n_entries_of_client_array; k++){
+        printf("%2d ", send_list_array[k*4]+10);
+    }
+
+
         //paint pacman monsters and bricks
     for ( i = 0 ; i < con_msg.n_lin; i++){
         for (j = 0; j < con_msg.n_col; j++){
             if(send_board[i*(con_msg.n_col)+j]==1){
                 paint_brick(j, i);
+            }else if(send_board[i*(con_msg.n_col)+j]==4){
+                paint_cherry(j, i);
+            }else if(send_board[i*(con_msg.n_col)+j]==5){
+                paint_lemon(j, i);
             }else if(send_board[i*(con_msg.n_col)+j]>10){
                 for (k=0;k< con_msg.n_entries_of_client_array;k++){
                     if (send_board[i*(con_msg.n_col)+j]==send_list_array[k*4]+10){
@@ -228,19 +246,6 @@ int pacman_sendcharacter_data(int sock_fd,int ID, int x, int y, int character){
 
 }
 
-int pacman_receivecharacter_data(int sock_fd){
-    // fruit and characters
-
-
-
-}
-
-
-
-int pacman_gamescore_data(int sock_fd){
-
-
-}
 
 
 int sock_fd;
