@@ -547,7 +547,6 @@ int main(int argc, char* argv[]){
 
                 //this fucntion return the place cwher the mouse cursor is
                 get_board_place(event.motion.x, event.motion.y,&x_pacman, &y_pacman);
-                printf("send pacman position x-%d y-%d\n", x_pacman,y_pacman);
                 pacman_sendcharacter_data(sock_fd,ID, x_pacman, y_pacman, 1);
             }
             if(event.type == SDL_KEYDOWN) {
@@ -564,7 +563,6 @@ int main(int argc, char* argv[]){
 
                     x_monster_send=x_monster+1;
                     y_monster_send=y_monster;
-                    printf("send monster position x-%d y-%d\n", x_monster_send,y_monster_send);
                     pacman_sendcharacter_data(sock_fd,ID, x_monster_send, y_monster_send, 3);
 
                 }
@@ -572,14 +570,12 @@ int main(int argc, char* argv[]){
 
                     x_monster_send=x_monster-1;
                     y_monster_send=y_monster;
-                    printf("send monster position x-%d y-%d\n", x_monster_send,y_monster_send);
                     pacman_sendcharacter_data(sock_fd,ID, x_monster_send, y_monster_send, 3);
                 }
                 if (event.key.keysym.sym == SDLK_UP ){
 
                     x_monster_send=x_monster;
                     y_monster_send=y_monster-1;
-                    printf("send monster position x-%d y-%d\n", x_monster_send,y_monster_send);
                     pacman_sendcharacter_data(sock_fd,ID, x_monster_send, y_monster_send, 3);
                 }
 
@@ -587,7 +583,6 @@ int main(int argc, char* argv[]){
 
                     x_monster_send=x_monster;
                     y_monster_send=y_monster+1;
-                    printf("send monster position x-%d y-%d\n", x_monster_send,y_monster_send);
                     pacman_sendcharacter_data(sock_fd,ID, x_monster_send, y_monster_send, 3);
                 }
             }
@@ -607,7 +602,6 @@ int main(int argc, char* argv[]){
             if(event.type == Event_ShowPacman){
                 Event_ShowCharacter_Data * data = event.user.data1;
                 clear_place(data->x_old,data->y_old);
-                printf("clean old pacman %d x-%d y-%d\n", data->character,data->x_old,data->y_old);
                 paint_pacman(data->x, data->y,data->r,data->g,data->b);
                 printf("move pacman %d x-%d y-%d\n", data->character,data->x,data->y);
             }
@@ -654,23 +648,19 @@ int main(int argc, char* argv[]){
                     paint_powerpacman(data_c2c->x1, data_c2c->y1, data_c2c->r1, data_c2c->g1, data_c2c->b1);
                 } else if (data_c2c->character1 == 3) {
                     paint_monster(data_c2c->x1, data_c2c->y1, data_c2c->r1, data_c2c->g1, data_c2c->b1);
-                    printf("%d\n",data_c2c->ID1);
-                    printf("%d\n",ID);
                     if(data_c2c->ID1==ID) {
                         x_monster = data_c2c->x1;
                         y_monster = data_c2c->y1;
 
                     }
                 }
-                //printf("ola2 dvsf %d %d  %d\n", data->character2,data->x2,data->y2);
                 if (data_c2c->character2 == 1) {
                     paint_pacman(data_c2c->x2, data_c2c->y2, data_c2c->r2, data_c2c->g2, data_c2c->b2);
                 } else if (data_c2c->character2 == 2) {
                     paint_powerpacman(data_c2c->x2, data_c2c->y2, data_c2c->r2, data_c2c->g2, data_c2c->b2);
                 } else if (data_c2c->character2 == 3) {
                     paint_monster(data_c2c->x2, data_c2c->y2, data_c2c->r2, data_c2c->g2, data_c2c->b2);
-                    printf("%d\n",data_c2c->ID2);
-                    printf("%d\n",ID);
+
                     if(data_c2c->ID2==ID) {
                         x_monster = data_c2c->x2;
                         y_monster = data_c2c->y2;
