@@ -109,28 +109,28 @@ connection_data pacman_connection(char *address, int port_number,int rgb_r,int r
     int i,j;
 
     err_rcv=recv(sock_fd, &m, sizeof(message),0);
-    if (err_rcv<0){
-        perror("1 Error in reading: ");
+    if (err_rcv<=0){
+        perror(" Error in reading: ");
         exit(-1);
     }
     printf("received data size:%d %d\n",err_rcv,m.size);
     err_rcv=recv(sock_fd, &con_msg, m.size,0);
-    if (err_rcv<0){
-        perror("1 Error in reading: ");
+    if (err_rcv<=0){
+        perror(" Error in reading: ");
         exit(-1);
     }
     printf("received data size:%d %d\n",err_rcv,m.size);
 
     err_rcv=recv(sock_fd, &m, sizeof(message),0);
-    if (err_rcv<0){
-        perror("1 Error in reading: ");
+    if (err_rcv<=0){
+        perror(" Error in reading: ");
         exit(-1);
     }
     send_board = (int *)malloc(m.size);
     printf("received data size:%d %d\n",err_rcv,m.size);
     err_rcv=recv(sock_fd, send_board, m.size,0);
-    if (err_rcv<0){
-        perror("1 Error in reading: ");
+    if (err_rcv<=0){
+        perror(" Error in reading: ");
         exit(-1);
     }
     printf("received data size:%d %d\n",err_rcv,m.size);

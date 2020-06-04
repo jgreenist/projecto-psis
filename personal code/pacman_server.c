@@ -23,6 +23,8 @@ Fruits_Struct *Fruits;
 int ** board;
 
 pthread_mutex_t  mux;
+pthread_rwlock_t end_mux;
+int thread_alive=0;
 
 //Only write in the begging and the only read operations//
 int n_cols;
@@ -84,11 +86,20 @@ typedef struct Event_Clean2Fruits_Data{
 
 void * thr_forplayspersec(void * arg) {
     struct sem_nplayspersec * sem_struct_arg= (struct sem_nplayspersec *) arg;
+    int sem_ending;
     while(1){
         sem_wait(&sem_struct_arg->sem_nplay1);
+        sem_getvalue(&sem_struct_arg->sem_end, &sem_ending);
+        if(sem_ending==1){
+            break;
+        }
         usleep(500000);
         sem_post(&sem_struct_arg->sem_nplay2);
     }
+    sem_destroy(&sem_struct_arg->sem_nplay1);
+    sem_destroy(&sem_struct_arg->sem_nplay2);
+    sem_destroy(&sem_struct_arg->sem_end);
+    pthread_exit(NULL);
 }
 
 //----------------------------------------------------------//
@@ -98,7 +109,7 @@ void * thr_forplayspersec(void * arg) {
 
 void * thr_inactivity(void * arg) {
     struct  sem_inactivity * inactivity_arg = (struct sem_inactivity *) arg;
-    int sem_value,error,i,j;
+    int sem_value,sem_ending,i,j,error;
     int msec = 0, trigger = 30000; /* 30000ms=30s */
     int elem,x,y,x_old,y_old;
     IDList * client_list;
@@ -110,8 +121,14 @@ void * thr_inactivity(void * arg) {
     event_data = malloc(sizeof(Event_Inactivity_Data));
     clock_t before = clock();
     while(1) {
-        error =sem_getvalue(&inactivity_arg->sem_inactivity, &sem_value);
-        if (sem_value == 0 && error==0) {
+        error=sem_getvalue(&inactivity_arg->sem_inactivity, &sem_value);
+        if (sem_value == 0 && error == 0) {
+
+            sem_getvalue(&inactivity_arg->sem_end, &sem_ending);
+            if (sem_ending == 1) {
+                break;
+            }
+
 
             difference = clock() - before;
             msec = difference * 1000 / CLOCKS_PER_SEC;
@@ -119,20 +136,23 @@ void * thr_inactivity(void * arg) {
             if (msec > trigger) {
                 //set new random place
                 pthread_mutex_lock(&mux);
-                client_list=get_IDlist(Clients, inactivity_arg->ID);
-                if(client_list!=NULL) {
+                client_list = get_IDlist(Clients, inactivity_arg->ID);
+                if (client_list != NULL) {
                     if (inactivity_arg->character == 1) {
                         x_old = client_list->xp;
                         y_old = client_list->yp;
-                        board[y_old][x_old]=0;
+                        board[y_old][x_old] = 0;
 
 
                     } else if (inactivity_arg->character == 3) {
                         x_old = client_list->xm;
                         y_old = client_list->ym;
-                        board[y_old][x_old]=0;
+                        board[y_old][x_old] = 0;
                     }
-                }else{
+                } else {
+                    sem_destroy(&inactivity_arg->sem_inactivity);
+                    sem_destroy(&inactivity_arg->sem_end);
+                    free(event_data);
                     pthread_exit(NULL);
                 }
 
@@ -141,34 +161,34 @@ void * thr_inactivity(void * arg) {
                 y = elem / n_cols;
 
                 //change x_ID and y_ID
-                if(inactivity_arg->character==1){
+                if (inactivity_arg->character == 1) {
 
-                    client_list->xp=x;
-                    client_list->yp=y;
-                    if(client_list->superpower==0){
-                        board[y][x]=inactivity_arg->ID+10;
-                    }else{
-                        board[y][x]=inactivity_arg->ID+10+1;
+                    client_list->xp = x;
+                    client_list->yp = y;
+                    if (client_list->superpower == 0) {
+                        board[y][x] = inactivity_arg->ID + 10;
+                    } else {
+                        board[y][x] = inactivity_arg->ID + 10 + 1;
                     }
 
-                }if(inactivity_arg->character==3){
+                }
+                if (inactivity_arg->character == 3) {
 
-                    client_list->xm=x;
-                    client_list->ym=y;
-                    board[y][x]=-(inactivity_arg->ID+10);
+                    client_list->xm = x;
+                    client_list->ym = y;
+                    board[y][x] = -(inactivity_arg->ID + 10);
 
                 }
-                printf("oklasfdd %d %d\n",client_list->xm,client_list->ym);
 
-                event_data->character=inactivity_arg->character;
+                event_data->character = inactivity_arg->character;
                 event_data->x_old = x_old;
                 event_data->y_old = y_old;
                 event_data->x = x;
-                event_data->y= y;
+                event_data->y = y;
                 event_data->r = inactivity_arg->rgb_r;
                 event_data->g = inactivity_arg->rgb_g;
                 event_data->b = inactivity_arg->rgb_b;
-                event_data->ID=inactivity_arg->ID;
+                event_data->ID = inactivity_arg->ID;
 
                 SDL_zero(new_event);
                 new_event.type = Event_Inactivity;
@@ -192,17 +212,27 @@ void * thr_inactivity(void * arg) {
             }
             usleep(250000);
 
-        }else if(error==-1){
+        } else if (error == -1) {
+            sem_destroy(&inactivity_arg->sem_inactivity);
+            sem_destroy(&inactivity_arg->sem_end);
+            free(event_data);
             pthread_exit(NULL);
 
-        }else if(sem_value==1){
+        } else if (sem_value == 1) {
             sem_wait(&inactivity_arg->sem_inactivity);
             //reset clock
             before = clock();
-        }else{
+        } else {
+            sem_destroy(&inactivity_arg->sem_inactivity);
+            sem_destroy(&inactivity_arg->sem_end);
+            free(event_data);
             pthread_exit(NULL);
         }
     }
+    sem_destroy(&inactivity_arg->sem_inactivity);
+    sem_destroy(&inactivity_arg->sem_end);
+    free(event_data);
+    pthread_exit(NULL);
 
     //printf("Time taken %d seconds %d milliseconds (%d iterations)\n",msec/1000, msec%1000, iterations);
 
@@ -219,14 +249,24 @@ void * thr_placefruit(void * arg) {
     Event_ShowFruit_Data *event_data;
     event_data = malloc(sizeof(Event_ShowFruit_Data));
     int fruit=my_arg->fruit;
-    int elem;
+    int elem,sem_value;
 
     while(1){
         sem_wait(&my_arg->sem_fruit1);
+        sem_post(&my_arg->sem_fruit2);
+
+
+        sem_getvalue(&my_arg->end_thread_fruit, &sem_value);
+        if(sem_value==1){
+            break;
+        }
+
         sleep(2);
         pthread_mutex_lock(&mux);
         elem=set_initialpos(board, n_cols,n_lines);
         board[elem/n_cols][elem%n_cols]=my_arg->fruit;
+        my_arg->x=elem%n_cols;
+        my_arg->y=elem/n_cols;
         event_data->x =elem%n_cols;
         event_data->y =elem/n_cols;
         event_data->fruit = fruit;
@@ -238,10 +278,12 @@ void * thr_placefruit(void * arg) {
         SDL_PushEvent(&new_event);
         sem_wait(&my_arg->sem_fruit2);
         pthread_mutex_unlock(&mux);
-
-
-
     }
+    sem_destroy(&my_arg->end_thread_fruit);
+    sem_destroy(&my_arg->sem_fruit1);
+    sem_destroy(&my_arg->sem_fruit2);
+    free(event_data);
+    pthread_exit(NULL);
 }
 //----------------------------------------------------------//
 //---------------CHECK IF A MOVE IS VALID FUNCTION----------//
@@ -1211,6 +1253,10 @@ void * clientThreadi(void * arg){
     int ID=(*my_arg).ID;
     int i,j;
 
+    pthread_rwlock_wrlock(&end_mux);
+    thread_alive++;
+    pthread_rwlock_unlock(&end_mux);
+
     //----------------------------------------------------------------------------------------------------------//
     //------------------------------------receiving the colour of the character---------------------------------//
     //----------------------------------------------------------------------------------------------------------//
@@ -1223,16 +1269,33 @@ void * clientThreadi(void * arg){
     if (err_rcv<0){
         perror("Error in reading: ");
         close(sock_fd);
+        pthread_rwlock_wrlock(&end_mux);
+        thread_alive--;
+        pthread_rwlock_unlock(&end_mux);
+
+        pthread_detach(pthread_self());
         pthread_exit(NULL);
     }
 
     if(m.action!=1){
         printf("invalid action\n");
         close(sock_fd);
-        pthread_exit(NULL);;
+
+        pthread_rwlock_wrlock(&end_mux);
+        thread_alive--;
+        pthread_rwlock_unlock(&end_mux);
+
+        pthread_detach(pthread_self());
+        pthread_exit(NULL);
     }if(m.size!= sizeof(colour_msg)){
         printf("invalid size of message\n");
         close(sock_fd);
+
+        pthread_rwlock_wrlock(&end_mux);
+        thread_alive--;
+        pthread_rwlock_unlock(&end_mux);
+
+        pthread_detach(pthread_self());
         pthread_exit(NULL);
     }
     //---------------------------------------------------------------//
@@ -1247,11 +1310,23 @@ void * clientThreadi(void * arg){
     if (err_rcv<0){
         perror("Error in reading: ");
         close(sock_fd);
+
+        pthread_rwlock_wrlock(&end_mux);
+        thread_alive--;
+        pthread_rwlock_unlock(&end_mux);
+
+        pthread_detach(pthread_self());
         pthread_exit(NULL);
     }
     if(msg_colour.r<0 || msg_colour.g<0 || msg_colour.b<0 ){
         printf("invalid colour code\n");
         close(sock_fd);
+
+        pthread_rwlock_wrlock(&end_mux);
+        thread_alive--;
+        pthread_rwlock_unlock(&end_mux);
+
+        pthread_detach(pthread_self());
         pthread_exit(NULL);
     }
     //---------------------------------------------------------------//
@@ -1279,7 +1354,15 @@ void * clientThreadi(void * arg){
     int elem1=set_initialpos(board, n_cols,n_lines);
     if(elem1<0){
         printf("board is full \n");
+        pthread_mutex_unlock(&mux);
+
         close(sock_fd);
+
+        pthread_rwlock_wrlock(&end_mux);
+        thread_alive--;
+        pthread_rwlock_unlock(&end_mux);
+
+        pthread_detach(pthread_self());
         pthread_exit(NULL);
         //close thread and etc
     }
@@ -1291,7 +1374,15 @@ void * clientThreadi(void * arg){
     if(elem2<0){
         printf("board is full \n");
         board[elem1/n_cols][elem1%n_cols]=0;
+        pthread_mutex_unlock(&mux);
+
         close(sock_fd);
+
+        pthread_rwlock_wrlock(&end_mux);
+        thread_alive--;
+        pthread_rwlock_unlock(&end_mux);
+
+        pthread_detach(pthread_self());
         pthread_exit(NULL);
         //close thread and etc
     }
@@ -1379,7 +1470,6 @@ void * clientThreadi(void * arg){
     new_event.type = Event_ShownewCharacter;
     new_event.user.data1 = event_data_ini;
     SDL_PushEvent(&new_event);
-
     pthread_mutex_unlock(&mux);
 
 
@@ -1410,12 +1500,13 @@ void * clientThreadi(void * arg){
     int error;
     Fruits_Struct * Cherry_list= (Fruits_Struct *) malloc(sizeof(Fruits_Struct));
     Fruits_Struct * Lemon_list=  (Fruits_Struct *) malloc(sizeof(Fruits_Struct));
+    Event_ShownewFruits_Data *event_data_newfruit;
+    event_data_newfruit = malloc(sizeof(Event_ShownewFruits_Data));
 
     pthread_mutex_lock(&mux);
     if(Clients!=NULL){
 
-        Event_ShownewFruits_Data *event_data_newfruit;
-        event_data_newfruit = malloc(sizeof(Event_ShownewFruits_Data));
+
 
         pthread_t thr_fruit1,thr_fruit2;
         event_data_newfruit->fruit1=0;
@@ -1442,8 +1533,10 @@ void * clientThreadi(void * arg){
 
             sem_init(&Cherry_list->sem_fruit1,0,0);
             sem_init(&Cherry_list->sem_fruit2,0,0);
+            sem_init(&Cherry_list->end_thread_fruit,0,0);
 
             error = pthread_create(&thr_fruit1,NULL,thr_placefruit, Cherry_list);
+            Cherry_list->thread_id=thr_fruit1;
         }
 
 
@@ -1469,13 +1562,13 @@ void * clientThreadi(void * arg){
 
             sem_init(&Lemon_list->sem_fruit1,0,0);
             sem_init(&Lemon_list->sem_fruit2,0,0);
-
+            sem_init(&Lemon_list->end_thread_fruit,0,0);
 
             Fruits=insert_new_Fruit(Fruits,Lemon_list );
 
-
-
             error = pthread_create(&thr_fruit2,NULL,thr_placefruit, Lemon_list);
+            Lemon_list->thread_id=thr_fruit1;
+
         }
 
         SDL_zero(new_event);
@@ -1487,7 +1580,6 @@ void * clientThreadi(void * arg){
     }
     Clients=insert_new_ID(Clients, this_client);
     pthread_mutex_unlock(&mux);
-
 
     //need to make sync here
 
@@ -1522,17 +1614,20 @@ void * clientThreadi(void * arg){
     pthread_t thr_nplayspersec1;
     sem_init(&arg_sem1.sem_nplay1, 0, 0);
     sem_init(&arg_sem1.sem_nplay2, 0, 1);
+    sem_init(&arg_sem1.sem_end,0,0);
     error = pthread_create(&thr_nplayspersec1,NULL,thr_forplayspersec , &arg_sem1);
 
     struct sem_nplayspersec arg_sem3;
     pthread_t thr_nplayspersec3;
     sem_init(&arg_sem3.sem_nplay1, 0, 0);
     sem_init(&arg_sem3.sem_nplay2, 0, 1);
+    sem_init(&arg_sem3.sem_end,0,0);
     error = pthread_create(&thr_nplayspersec3,NULL,thr_forplayspersec , &arg_sem3);
 
     pthread_t thr_ina1;
     struct sem_inactivity inactivity1;
     sem_init(&inactivity1.sem_inactivity,0,0);
+    sem_init(&inactivity1.sem_end,0,0);
     inactivity1.ID=ID;
     inactivity1.character=1;
     inactivity1.rgb_r=rgb_r;
@@ -1543,6 +1638,8 @@ void * clientThreadi(void * arg){
     pthread_t thr_ina3;
     struct sem_inactivity inactivity3;
     sem_init(&inactivity3.sem_inactivity,0,0);
+    sem_init(&inactivity3.sem_end,0,0);
+
     inactivity3.ID=ID;
     inactivity3.character=3;
     inactivity3.rgb_r=rgb_r;
@@ -1553,7 +1650,7 @@ void * clientThreadi(void * arg){
     int x_old;
     int y_old;
     int superpower=0;
-    IDList * other_client = (IDList *) malloc(sizeof(IDList));
+    IDList * other_client;
     int ID_other;
 
     //-------------------------------------------------------//
@@ -1607,6 +1704,9 @@ void * clientThreadi(void * arg){
                     event_data_cleanfruit->x1=Cherry_list->x;
                     event_data_cleanfruit->y1=Cherry_list->y;
                     event_data_cleanfruit->fruit1=4;
+                    sem_post(&Cherry_list->end_thread_fruit);
+                    sem_post(&Cherry_list->sem_fruit1);
+                    pthread_join(Cherry_list->thread_id,NULL);
                     Fruits =remove_fruit_list(Fruits, Cherry_list);
                 }
 
@@ -1617,6 +1717,9 @@ void * clientThreadi(void * arg){
                     event_data_cleanfruit->x2=Lemon_list->x;
                     event_data_cleanfruit->y2=Lemon_list->y;
                     event_data_cleanfruit->fruit2=5;
+                    sem_post(&Lemon_list->end_thread_fruit);
+                    sem_post(&Lemon_list->sem_fruit1);
+                    pthread_join(Lemon_list->thread_id,NULL);
                     Fruits =remove_fruit_list(Fruits, Lemon_list);
                 }
                 //NEED SYNC HERE and free
@@ -1637,21 +1740,31 @@ void * clientThreadi(void * arg){
             SDL_PushEvent(&new_event);
             pthread_mutex_unlock(&mux);
 
+            sem_post(&inactivity1.sem_end);
+            sem_post(&inactivity3.sem_end);
+
+            sem_post(&arg_sem1.sem_nplay1);
+            sem_post(&arg_sem1.sem_end);
+
+            sem_post(&arg_sem3.sem_nplay1);
+            sem_post(&arg_sem3.sem_end);
+
+
 
             //clear semaphores
-            error=sem_destroy(&inactivity1.sem_inactivity);
-            sem_destroy(&inactivity3.sem_inactivity);
-            sem_destroy(&arg_sem1.sem_nplay1);
-            sem_destroy(&arg_sem1.sem_nplay2);
-            sem_destroy(&arg_sem3.sem_nplay1);
-            sem_destroy(&arg_sem3.sem_nplay2);
             pthread_join(thr_ina1, NULL);
             pthread_join(thr_ina3, NULL);
             pthread_join(thr_nplayspersec1, NULL);
             pthread_join(thr_nplayspersec3, NULL);
-
             //clear socket
             close(sock_fd);
+            free(event_data);
+            free(event_data_newfruit);
+            free(event_data2player);
+            free(event_data_cleanfruit);
+            free(event_data_ini);
+            free(event_data_final);
+
             printf("%d %d\n", n_cols, n_lines);
             for ( i = 0 ; i < n_lines; i++){
                 printf("%2d ", i);
@@ -1660,6 +1773,12 @@ void * clientThreadi(void * arg){
                 }
                 printf("\n");
             }
+
+            pthread_rwlock_wrlock(&end_mux);
+            thread_alive--;
+            pthread_rwlock_unlock(&end_mux);
+
+            pthread_detach(pthread_self());
             pthread_exit(NULL);
         }
         //---------------------------------------------------------------//
@@ -1736,8 +1855,6 @@ void * clientThreadi(void * arg){
 
                         Cherry_list = get_fruit_list(Fruits,4);
                         sem_post(&Cherry_list->sem_fruit1);
-                        sem_post(&Cherry_list->sem_fruit2);
-
 
                         event_data->character = 2;
                         event_data->x = validity_move.new_x1;
@@ -1770,8 +1887,6 @@ void * clientThreadi(void * arg){
 
                         Lemon_list = get_fruit_list(Fruits,5);
                         sem_post(&Lemon_list->sem_fruit1);
-                        sem_post(&Lemon_list->sem_fruit2);
-
 
 
                         event_data->character = 2;
@@ -1783,6 +1898,7 @@ void * clientThreadi(void * arg){
                         event_data->g = rgb_g;
                         event_data->b = rgb_b;
                         event_data->ID=ID;
+
 
                         // send the event
                         SDL_zero(new_event);
@@ -1945,7 +2061,6 @@ void * clientThreadi(void * arg){
                     if(validity_move.valid == 1 && validity_move.flag_newfruit == 1){
                         Cherry_list = get_fruit_list(Fruits,4);
                         sem_post(&Cherry_list->sem_fruit1);
-                        sem_post(&Cherry_list->sem_fruit2);
 
                         this_client->score++;
                         this_client->xm= validity_move.new_x1;
@@ -1974,9 +2089,6 @@ void * clientThreadi(void * arg){
                     }else if(validity_move.valid == 1 && validity_move.flag_newfruit == 2){
                         Lemon_list = get_fruit_list(Fruits,5);
                         sem_post(&Lemon_list->sem_fruit1);
-                        sem_post(&Lemon_list->sem_fruit2);
-
-
 
                         this_client->score++;
                         this_client->xm= validity_move.new_x1;
@@ -1996,6 +2108,7 @@ void * clientThreadi(void * arg){
                         new_event.type = Event_ShowCharacter;
                         new_event.user.data1 = event_data;
                         SDL_PushEvent(&new_event);
+
 
                         sem_post(&inactivity3.sem_inactivity);
                         sem_wait(&arg_sem3.sem_nplay2);
@@ -2045,7 +2158,6 @@ void * clientThreadi(void * arg){
                             this_client->ym=validity_move.new_y1;
 
 
-                            event_data = malloc(sizeof(Event_ShowCharacter_Data));
                             event_data->character = validity_move.character1;
                             event_data->x = validity_move.new_x1;
                             event_data->y = validity_move.new_y1;
@@ -2055,6 +2167,7 @@ void * clientThreadi(void * arg){
                             event_data->g = rgb_g;
                             event_data->b = rgb_b;
                             event_data->ID=ID;
+
 
                             // send the event
                             SDL_zero(new_event);
@@ -2171,7 +2284,7 @@ void * clientThreadi(void * arg){
 
 
     }
-
+    //NEED SYNC HERE
     pthread_mutex_lock(&mux);
     board[this_client->yp][this_client->xp]=0;
     board[this_client->ym][this_client->xm]=0;
@@ -2200,6 +2313,9 @@ void * clientThreadi(void * arg){
             event_data_cleanfruit->x1=Cherry_list->x;
             event_data_cleanfruit->y1=Cherry_list->y;
             event_data_cleanfruit->fruit1=4;
+            sem_post(&Cherry_list->end_thread_fruit);
+            sem_post(&Cherry_list->sem_fruit1);
+            pthread_join(Cherry_list->thread_id,NULL);
             Fruits =remove_fruit_list(Fruits, Cherry_list);
         }
 
@@ -2210,6 +2326,9 @@ void * clientThreadi(void * arg){
             event_data_cleanfruit->x2=Lemon_list->x;
             event_data_cleanfruit->y2=Lemon_list->y;
             event_data_cleanfruit->fruit2=5;
+            sem_post(&Lemon_list->end_thread_fruit);
+            sem_post(&Lemon_list->sem_fruit1);
+            pthread_join(Lemon_list->thread_id,NULL);
             Fruits =remove_fruit_list(Fruits, Lemon_list);
         }
         //NEED SYNC HERE and free
@@ -2230,21 +2349,31 @@ void * clientThreadi(void * arg){
     SDL_PushEvent(&new_event);
     pthread_mutex_unlock(&mux);
 
+    sem_post(&inactivity1.sem_end);
+    sem_post(&inactivity3.sem_end);
+
+    sem_post(&arg_sem1.sem_nplay1);
+    sem_post(&arg_sem1.sem_end);
+
+    sem_post(&arg_sem3.sem_nplay1);
+    sem_post(&arg_sem3.sem_end);
+
+
 
     //clear semaphores
-    error=sem_destroy(&inactivity1.sem_inactivity);
-    sem_destroy(&inactivity3.sem_inactivity);
-    sem_destroy(&arg_sem1.sem_nplay1);
-    sem_destroy(&arg_sem1.sem_nplay2);
-    sem_destroy(&arg_sem3.sem_nplay1);
-    sem_destroy(&arg_sem3.sem_nplay2);
     pthread_join(thr_ina1, NULL);
     pthread_join(thr_ina3, NULL);
     pthread_join(thr_nplayspersec1, NULL);
     pthread_join(thr_nplayspersec3, NULL);
-
     //clear socket
     close(sock_fd);
+    free(event_data);
+    free(event_data_newfruit);
+    free(event_data2player);
+    free(event_data_cleanfruit);
+    free(event_data_ini);
+    free(event_data_final);
+
     printf("%d %d\n", n_cols, n_lines);
     for ( i = 0 ; i < n_lines; i++){
         printf("%2d ", i);
@@ -2253,13 +2382,19 @@ void * clientThreadi(void * arg){
         }
         printf("\n");
     }
+
+    pthread_rwlock_wrlock(&end_mux);
+    thread_alive--;
+    pthread_rwlock_unlock(&end_mux);
+
+    pthread_detach(pthread_self());
     pthread_exit(NULL);
 }
 
 //------------------------------------------------//
 // ----------Thread for accepting connection------//
 //------------------------------------------------//
-
+int flag_end=0;
 int server_socket;
 void * thread_Accept(void * argc){
     int ID=1;
@@ -2269,28 +2404,42 @@ void * thread_Accept(void * argc){
     struct threadclient_arg *arg;
 
     pthread_t clientthread_id;
+    arg = malloc(sizeof(struct threadclient_arg));
     while(1){
         printf("waiting for connections\n");
         sock_fd= accept(server_socket,(struct sockaddr *) & client_addr, &size_addr);
         if(sock_fd == -1) {
             perror("accept");
-            exit(-1);
+            break;
+        }else if (flag_end==1){
+            break;
         }
-        arg = malloc(sizeof(struct threadclient_arg));
         (*arg).sock_fd=sock_fd;
         (*arg).ID=ID;
         pthread_create(&clientthread_id, NULL, clientThreadi, (void*)arg);
         printf("accepted connection \n");
         ID=ID+2;
     }
-    return (NULL);
+
+    pthread_mutex_lock(&mux);
+    IDList *aux = Clients;
+    while (aux != NULL) {
+        shutdown(aux->socket,SHUT_RD);
+        aux = aux->next;
+    }
+    pthread_mutex_unlock(&mux);
+
+    free(arg);
+    pthread_exit(NULL);
 }
 
 
 void * send_scores(void * argc){
+    sem_t * arg = (sem_t *) argc;
+
     IDList *aux;
-    int size=0,i;
-    score_msg=malloc(sizeof(int)*2);
+    int size=0,i,sem_value;
+    int * score_msg;
     message m;
     m.action=8;
 
@@ -2299,7 +2448,17 @@ void * send_scores(void * argc){
     while(1){
 
 
-        sleep(60);
+        for(i=0;i<60;i++){
+            sleep(1);
+            sem_getvalue(arg, &sem_value);
+            if(sem_value==1){
+                break;
+            }
+        }
+        if(sem_value==1){
+            break;
+        }
+
         pthread_mutex_lock(&mux);
         if(Clients==NULL){
             pthread_mutex_unlock(&mux);
@@ -2318,7 +2477,7 @@ void * send_scores(void * argc){
                     aux = get_next_ID(aux);
                 }
                 m.size= sizeof(int)*2*size;
-                score_msg=realloc(score_msg,m.size);
+                score_msg=(int *)malloc(m.size);
                 aux=Clients;
                 i=0;
                 while (aux != NULL) {
@@ -2334,12 +2493,13 @@ void * send_scores(void * argc){
                     send(aux->socket, score_msg, m.size, 0);
                     aux = aux->next;
                 }
+                free(score_msg);
             }
             pthread_mutex_unlock(&mux);
         }
 
     }
-    return (NULL);
+    pthread_exit(NULL);
 }
 
 
@@ -2377,6 +2537,8 @@ int main(int argc , char* argv[]){
         exit(-1);
     }
 
+
+
     char read_object;
     board =(int **) malloc(sizeof(int *) * (n_lines));
     for ( i = 0 ; i < n_lines; i++) {
@@ -2411,9 +2573,6 @@ int main(int argc , char* argv[]){
 
     fclose(fp);
 
-    //------------------------------------------------//
-    //-----------------create mutex-------------------//
-    //------------------------------------------------//
 
 
 
@@ -2447,10 +2606,17 @@ int main(int argc , char* argv[]){
         exit(-1);
     }
 
-    pthread_create(&thread_Accept_id, NULL, thread_Accept, NULL);
-    pthread_create(&thread_score, NULL, send_scores, NULL);
+    //mutex initial operations
+    sem_t ending_sem;
 
     pthread_mutex_init(&mux,NULL);
+    pthread_rwlock_init(&end_mux,NULL);
+    sem_init(&ending_sem,0,0);
+
+    //init pthread's
+    pthread_create(&thread_Accept_id, NULL, thread_Accept, NULL);
+    pthread_create(&thread_score, NULL, send_scores, &ending_sem);
+
 
 /*------------------------------------------------------------------------//  GAME LOGIC///----------------------------------------------------------*/
 
@@ -2811,8 +2977,60 @@ int main(int argc , char* argv[]){
             }
         }
     }
-    printf("\n");
-    printf("fim\n");
+
+
+    //---------------close server thread ----------------------------//
+    int sock_fd;
+    struct sockaddr_in server_addr;
+    sock_fd=socket(AF_INET, SOCK_STREAM,IPPROTO_TCP);
+    if (sock_fd==-1){
+        perror("socket: ");
+        exit(-1);
+    }
+    server_addr.sin_family=AF_INET;
+    server_addr.sin_port=htons(50000);
+    if(inet_aton("127.0.0.1", &server_addr.sin_addr)==0){
+        printf("The address is not a valid address \n");
+        exit(-1);
+    }
+    flag_end=1;
+    if(connect(sock_fd,(const struct sockaddr *)&server_addr, sizeof(server_addr))==-1){
+        perror("Error connecting: ");
+        exit(-1);
+    }
+
+    pthread_join(thread_Accept_id,NULL);
+    close(server_socket);
+    close(sock_fd);
+
+    //---------------------------------------------------------------//
+
+    //---------------close score thread -----------------------------//
+    sem_post(&ending_sem);
+    pthread_join(thread_score,NULL);
+    //---------------------------------------------------------------//
+
+
+    //-------------wait for the other thread to close ---------------//
+    while(1){
+        pthread_rwlock_rdlock(&end_mux);
+        if(thread_alive==0){
+            break;
+        }
+        pthread_rwlock_unlock(&end_mux);
+        //wait for all thread to exit
+    }
+    //---------------------------------------------------------------//
+
+    for ( i = 0 ; i < n_lines; i++) {
+        free(board[i]);
+    }
+    free(board);
+
+    pthread_rwlock_destroy(&end_mux);
+    pthread_mutex_destroy(&mux);
     close_board_windows();
+    printf("fim\n");
+
     exit(0);
 }

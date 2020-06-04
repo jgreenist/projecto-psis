@@ -4,6 +4,8 @@
 typedef struct Fruits_Struct{
     sem_t               sem_fruit1;
     sem_t               sem_fruit2;
+    sem_t               end_thread_fruit;
+    pthread_t           thread_id;
     int 				fruit;
     int                 x;
     int 				y;
