@@ -32,12 +32,21 @@
     <list default="true" id="75d47b6e-bacf-4b24-8d11-b92d5b17b0a0" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/personal code/board.txt" beforeDir="false" afterPath="$PROJECT_DIR$/personal code/board.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/personal code/list_ID.h" beforeDir="false" afterPath="$PROJECT_DIR$/personal code/list_ID.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/personal code/pac_func.h" beforeDir="false" afterPath="$PROJECT_DIR$/personal code/pac_func.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/personal code/com_protocol.c" beforeDir="false" afterPath="$PROJECT_DIR$/personal code/com_protocol.c" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/personal code/com_protocol.h" beforeDir="false" afterPath="$PROJECT_DIR$/personal code/com_protocol.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/personal code/pacman_clientID1" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/personal code/pacman_clientID1.c" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/personal code/pacman_clientID2" beforeDir="false" afterPath="$PROJECT_DIR$/personal code/pacman_clientID2" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/personal code/pacman_clientID2.c" beforeDir="false" afterPath="$PROJECT_DIR$/personal code/pacman_clientID2.c" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/personal code/pacman_server" beforeDir="false" afterPath="$PROJECT_DIR$/personal code/pacman_server" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/personal code/pacman_server.c" beforeDir="false" afterPath="$PROJECT_DIR$/personal code/pacman_server.c" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/personal code/teste-UI" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/personal code/teste-mt.c" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/personal code/testes/send_array_client" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/personal code/testes/send_array_client.c" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/personal code/testes/send_array_server" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/personal code/testes/send_array_server.c" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/personal code/testes/teste.c" beforeDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -46,70 +55,10 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="FileEditorManager">
-    <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
-      <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/personal code/pacman_server.c">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="473">
-              <caret line="1249" column="32" selection-start-line="1249" selection-start-column="32" selection-end-line="1249" selection-end-column="32" />
-              <folding>
-                <element signature="e#256#281#0" expanded="true" />
-                <element signature="e#2254#2808#0" />
-                <element signature="e#3063#7548#0" />
-                <element signature="e#7740#8952#0" />
-                <element signature="e#9151#9406#0" />
-                <element signature="e#9419#13549#0" />
-                <element signature="e#13550#17732#0" />
-                <element signature="e#17733#23323#0" />
-                <element signature="e#23325#42709#0" />
-                <element signature="e#42712#86613#0" />
-                <element signature="e#86809#87779#0" />
-                <element signature="e#87782#89503#0" />
-                <element signature="e#89666#107615#0" />
-              </folding>
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file pinned="false" current-in-tab="true">
-        <entry file="file://$PROJECT_DIR$/personal code/pacman_clientID2.c">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="170">
-              <caret line="53" column="94" lean-forward="true" selection-start-line="53" selection-start-column="94" selection-end-line="53" selection-end-column="94" />
-              <folding>
-                <element signature="e#213#238#0" expanded="true" />
-                <element signature="e#1223#6384#0" />
-                <element signature="e#6386#6620#0" />
-                <element signature="e#6622#7035#0" />
-              </folding>
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/personal code/com_protocol.h">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="157">
-              <caret line="35" column="2" selection-start-line="35" selection-start-column="2" selection-end-line="35" selection-end-column="2" />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/personal code/list_ID.h">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="105">
-              <caret line="7" column="24" selection-start-line="7" selection-start-column="24" selection-end-line="7" selection-end-column="24" />
-            </state>
-          </provider>
-        </entry>
-      </file>
-    </leaf>
+    <leaf SIDE_TABS_SIZE_LIMIT_KEY="300" />
   </component>
   <component name="FindInProjectRecents">
     <findStrings>
-      <find>event_data-&gt;ID</find>
-      <find>Lemon_list-&gt;sem_fruit1</find>
       <find>Lemon_list-&gt;sem_fruit2</find>
       <find>cond</find>
       <find>sem_fruit1</find>
@@ -138,6 +87,8 @@
       <find>close</find>
       <find>pthread_join</find>
       <find>printf</find>
+      <find>received data</find>
+      <find>this</find>
     </findStrings>
   </component>
   <component name="Git.Settings">
@@ -149,12 +100,13 @@
         <option value="$PROJECT_DIR$/psis_grupo_15_joao_ornelas_tiago_almeida/PSis_Grupo15_Joao_Ornelas_Tiago_Almeida/clipboard.c" />
         <option value="$PROJECT_DIR$/personal code/list_ID.c" />
         <option value="$PROJECT_DIR$/personal code/pacman_clientID1.c" />
-        <option value="$PROJECT_DIR$/personal code/com_protocol.h" />
         <option value="$PROJECT_DIR$/personal code/pac_func.c" />
         <option value="$PROJECT_DIR$/personal code/pac_func.h" />
         <option value="$PROJECT_DIR$/personal code/list_ID.h" />
-        <option value="$PROJECT_DIR$/personal code/pacman_server.c" />
+        <option value="$PROJECT_DIR$/personal code/com_protocol.c" />
+        <option value="$PROJECT_DIR$/personal code/com_protocol.h" />
         <option value="$PROJECT_DIR$/personal code/pacman_clientID2.c" />
+        <option value="$PROJECT_DIR$/personal code/pacman_server.c" />
       </list>
     </option>
   </component>
@@ -169,7 +121,25 @@
     <navigator proportions="" version="1">
       <foldersAlwaysOnTop value="true" />
     </navigator>
-    <panes />
+    <panes>
+      <pane id="Scope" />
+      <pane id="ProjectPane">
+        <subPane>
+          <expand>
+            <path>
+              <item name="Projecto psis" type="b2602c69:ProjectViewProjectNode" />
+              <item name="Projecto psis" type="462c0819:PsiDirectoryNode" />
+            </path>
+            <path>
+              <item name="Projecto psis" type="b2602c69:ProjectViewProjectNode" />
+              <item name="Projecto psis" type="462c0819:PsiDirectoryNode" />
+              <item name="personal code" type="462c0819:PsiDirectoryNode" />
+            </path>
+          </expand>
+          <select />
+        </subPane>
+      </pane>
+    </panes>
   </component>
   <component name="PropertiesComponent">
     <property name="WebServerToolWindowFactoryState" value="false" />
@@ -229,13 +199,12 @@
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="553076000" />
+    <option name="totallyTimeSpent" value="556207000" />
   </component>
   <component name="ToolWindowManager">
-    <frame x="1020" y="24" width="928" height="1056" extended-state="4" />
-    <editor active="true" />
+    <frame x="992" y="24" width="928" height="1056" extended-state="4" />
     <layout>
-      <window_info content_ui="combo" id="Project" order="0" weight="0.034013607" />
+      <window_info active="true" content_ui="combo" id="Project" order="0" visible="true" weight="0.034013607" />
       <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
       <window_info id="Favorites" order="2" side_tool="true" />
       <window_info anchor="bottom" id="Message" order="0" />
@@ -305,9 +274,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/personal code/com_protocol.c">
-      <provider selected="true" editor-type-id="text-editor" />
-    </entry>
     <entry file="file://$PROJECT_DIR$/personal code/pac_func.c">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="817">
@@ -348,13 +314,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/personal code/com_protocol.h">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="157">
-          <caret line="35" column="2" selection-start-line="35" selection-start-column="2" selection-end-line="35" selection-end-column="2" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/personal code/list_ID.h">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="105">
@@ -362,37 +321,50 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/personal code/pacman_server.c">
+    <entry file="file://$PROJECT_DIR$/personal code/com_protocol.c">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="473">
-          <caret line="1249" column="32" selection-start-line="1249" selection-start-column="32" selection-end-line="1249" selection-end-column="32" />
+        <state relative-caret-position="255">
+          <caret line="190" column="78" selection-start-line="190" selection-end-line="190" selection-end-column="78" />
           <folding>
-            <element signature="e#256#281#0" expanded="true" />
-            <element signature="e#2254#2808#0" />
-            <element signature="e#3063#7548#0" />
-            <element signature="e#7740#8952#0" />
-            <element signature="e#9151#9406#0" />
-            <element signature="e#9419#13549#0" />
-            <element signature="e#13550#17732#0" />
-            <element signature="e#17733#23323#0" />
-            <element signature="e#23325#42709#0" />
-            <element signature="e#42712#86613#0" />
-            <element signature="e#86809#87779#0" />
-            <element signature="e#87782#89503#0" />
-            <element signature="e#89666#107615#0" />
+            <element signature="e#213#238#0" expanded="true" />
+            <element signature="e#1#5162#0" />
+            <element signature="e#5164#5398#0" />
+            <element signature="e#5400#5813#0" />
           </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/personal code/com_protocol.h">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="817">
+          <caret line="83" column="79" selection-start-line="83" selection-start-column="79" selection-end-line="83" selection-end-column="79" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/personal code/pacman_clientID2.c">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="170">
-          <caret line="53" column="94" lean-forward="true" selection-start-line="53" selection-start-column="94" selection-end-line="53" selection-end-column="94" />
+        <state relative-caret-position="-5692">
+          <caret line="46" lean-forward="true" selection-start-line="46" selection-end-line="46" />
           <folding>
             <element signature="e#213#238#0" expanded="true" />
-            <element signature="e#1223#6384#0" />
-            <element signature="e#6386#6620#0" />
-            <element signature="e#6622#7035#0" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/personal code/pacman_server.c">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="272">
+          <caret line="772" column="106" selection-start-line="772" selection-start-column="106" selection-end-line="772" selection-end-column="106" />
+          <folding>
+            <element signature="e#256#281#0" expanded="true" />
+            <element signature="e#2254#2808#0" />
+            <element signature="e#3063#7548#0" />
+            <element signature="e#7740#8952#0" />
+            <element signature="e#9419#13549#0" />
+            <element signature="e#13550#17732#0" />
+            <element signature="e#17733#23323#0" />
+            <element signature="e#23325#42709#0" />
+            <element signature="e#86809#87779#0" />
           </folding>
         </state>
       </provider>
